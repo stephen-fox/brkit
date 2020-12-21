@@ -14,9 +14,12 @@ import (
 const (
 	outputFormatArg  = "o"
 	noNewLineArg     = "n"
+	noNewLineEncArg  = "N"
+	printPatternsArg = "printpatterns"
 	helpArg          = "h"
 
 	inputFormatArg  = "i"
+	patternArg      = "pattern"
 	wrongEndianArg  = "wendian"
 	repeatStringArg = "repeat"
 
@@ -24,15 +27,15 @@ const (
 	rawFormat = "raw"
 	b64Format = "b64"
 
-	appName = "app"
+	appName = "stringer"
 	usage   = appName + `
 An application for working with strings of bytes, and manipulating data.
 
 usage:
-  ` + appName + ` [main options] [string [string options]...]
+  ` + appName + ` [main options] [string [string manipulation options]...]
 
 examples:
-  ` + appName + ` 0x080491e2
+  ` + appName + ` A -` + patternArg + ` 200
   ` + appName + ` 0x080491e2 -` + wrongEndianArg + `
   ` + appName + ` A -` + repeatStringArg + ` 184 -` + inputFormatArg + ` ` + rawFormat + ` 0x080491e2 -` + wrongEndianArg + `
 
@@ -49,6 +52,14 @@ func main() {
 		noNewLineArg,
 		false,
 		"Do not append new line character to output")
+	noNewLineInEncoding := flag.Bool(
+		noNewLineEncArg,
+		false,
+		"Do not include a new line in encoded data")
+	printPatternStrings := flag.Bool(
+		printPatternsArg,
+		false,
+		"Print pattern strings to stderr for future reference")
 	help := flag.Bool(
 		helpArg,
 		false,
@@ -59,7 +70,7 @@ func main() {
 	if *help {
 		os.Stderr.WriteString(usage)
 		flag.PrintDefaults()
-		os.Stderr.WriteString("\nstring options:\n")
+		os.Stderr.WriteString("\nstring manipulation options:\n")
 		newStringFlagsConfig().set.PrintDefaults()
 		os.Exit(1)
 	}
@@ -70,17 +81,26 @@ func main() {
 	var values []byte
 	for {
 		i++
-		value, next, keepGoing, err := processNextString(remainingArgs)
+		result, err := processNextString(remainingArgs)
 		if err != nil {
 			log.Fatalf("failed to process value %d - %s", i, err)
 		}
 
-		values = append(values, value...)
-		if !keepGoing {
+		if *printPatternStrings && result.isPatternStr {
+			os.Stderr.WriteString(fmt.Sprintf("pattern str @ %d: %x\n",
+				i, result.value))
+		}
+
+		values = append(values, result.value...)
+		if len(result.remainingArgs) == 0 {
 			break
 		}
 
-		remainingArgs = next
+		remainingArgs = result.remainingArgs
+	}
+
+	if !*noNewLineInEncoding || *outputEncoding == rawFormat {
+		values = append(values, '\n')
 	}
 
 	switch *outputEncoding {
@@ -112,9 +132,9 @@ func newStringFlagsConfig() *stringFlagsConfig {
 			0,
 			"Create a new string n bytes long"),
 		pattern:       set.Uint(
-			"pattern",
+			patternArg,
 			0,
-			"Create a pattern string (not well tested, sorry)"),
+			"Create a pattern string n bytes long (not well tested, sorry)"),
 		swapEndianness: set.Bool(
 			wrongEndianArg,
 			false,
@@ -134,10 +154,16 @@ type stringFlagsConfig struct {
 	swapEndianness *bool
 }
 
-func processNextString(remainingOSArgs []string) ([]byte, []string, bool, error) {
+type processNextStringResult struct {
+	value         []byte
+	isPatternStr  bool
+	remainingArgs []string
+}
+
+func processNextString(remainingOSArgs []string) (*processNextStringResult, error) {
 	remainingOSArgsLen := len(remainingOSArgs)
 	if remainingOSArgsLen == 0 {
-		return nil, nil, false, fmt.Errorf("please specify an input value")
+		return nil, fmt.Errorf("please specify an input value")
 	}
 	stringFlags := newStringFlagsConfig()
 	stringFlags.set.Parse(remainingOSArgs[1:])
@@ -150,12 +176,12 @@ func processNextString(remainingOSArgs []string) ([]byte, []string, bool, error)
 	case b64Format:
 		value, err = base64.StdEncoding.DecodeString(remainingOSArgs[0])
 		if err != nil {
-			return nil, nil, false, fmt.Errorf("failed to base64 decode value - %s", err)
+			return nil, fmt.Errorf("failed to base64 decode value - %s", err)
 		}
 	default:
 		value, err = hex.DecodeString(strings.TrimPrefix(remainingOSArgs[0], "0x"))
 		if err != nil {
-			return nil, nil, false, fmt.Errorf("failed to hex decode value - %s", err)
+			return nil, fmt.Errorf("failed to hex decode value - %s", err)
 		}
 	}
 
@@ -176,7 +202,11 @@ func processNextString(remainingOSArgs []string) ([]byte, []string, bool, error)
 		value = temp
 	}
 
-	return value, stringFlags.set.Args(), len(stringFlags.set.Args()) > 0, nil
+	return &processNextStringResult{
+		value:         value,
+		isPatternStr:  *stringFlags.pattern > 0,
+		remainingArgs: stringFlags.set.Args(),
+	}, nil
 }
 
 func pattern(length int) []byte {
