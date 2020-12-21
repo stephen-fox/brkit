@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -13,53 +13,38 @@ import (
 
 const (
 	outputFormatArg  = "o"
-	prefixStrArg     = "prefix"
-	littleArg        = "little"
 	noNewLineArg     = "n"
-	lenArg           = "len"
 	helpArg          = "h"
-	createStringMode = "new"
-	appendStringMode = "append"
 
-	hexOutputFormat = "hex"
-	rawOutputFormat = "raw"
+	inputFormatArg  = "i"
+	wrongEndianArg  = "wendian"
+	repeatStringArg = "repeat"
+
+	hexFormat = "hex"
+	rawFormat = "raw"
+	b64Format = "b64"
 
 	appName = "app"
 	usage   = appName + `
-An application for working with bytes, and manipulating PoC exploit data.
+An application for working with strings of bytes, and manipulating data.
 
 usage:
-  ` + appName + ` [mode] [options] value
+  ` + appName + ` [main options] [string [string options]...]
 
 examples:
   ` + appName + ` 0x080491e2
-  ` + appName + ` -` + littleArg + ` 0x080491e2
-  ` + appName + ` -` + lenArg + ` 40 ` + createStringMode + ` 0x080491e2
+  ` + appName + ` 0x080491e2 -` + wrongEndianArg + `
+  ` + appName + ` A -` + repeatStringArg + ` 184 -` + inputFormatArg + ` ` + rawFormat + ` 0x080491e2 -` + wrongEndianArg + `
 
-modes:
-  ` + createStringMode + `, ` + appendStringMode + `
-
-options:
+main options:
 `
 )
 
 func main() {
-	outputFormat := flag.String(
+	outputEncoding := flag.String(
 		outputFormatArg,
-		"hex",
-		fmt.Sprintf("The output format (%s, %s)", hexOutputFormat, rawOutputFormat))
-	createStringLen := flag.Int(
-		lenArg,
-		1,
-		fmt.Sprintf("The length of a string created with '%s'", createStringMode))
-	prefixString := flag.String(
-		prefixStrArg,
-		"",
-		fmt.Sprintf("An existing string to prefix '%s' with (can be from stdin instead)", appendStringMode))
-	toWrongEndian := flag.Bool(
-		littleArg,
-		false,
-		"Convert the input value to little (wrong) endian")
+		hexFormat,
+		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
 	noNewLine := flag.Bool(
 		noNewLineArg,
 		false,
@@ -68,81 +53,150 @@ func main() {
 		helpArg,
 		false,
 		"Display this help page")
-
 	flag.Parse()
 
+	// TODO: Read from stdin support?
 	if *help {
 		os.Stderr.WriteString(usage)
 		flag.PrintDefaults()
+		os.Stderr.WriteString("\nstring options:\n")
+		newStringFlagsConfig().set.PrintDefaults()
 		os.Exit(1)
 	}
 
-	var mode string
-	var value []byte
-	switch flag.NArg() {
-	case 0:
-		log.Fatalf("please specify at least one argument")
-	case 1:
-		value = []byte(flag.Arg(0))
-	case 2:
-		mode = flag.Arg(0)
-		value = []byte(flag.Arg(1))
-	default:
-		log.Fatalf("too many non-option arguments were specified")
-	}
+	remainingArgs := flag.Args()
 
-	if len(value) > 0 {
-		value = bytes.TrimPrefix(value, []byte("0x"))
-		temp := make([]byte, hex.DecodedLen(len(value)))
-		_, err := hex.Decode(temp, value)
+	i := 0
+	var values []byte
+	for {
+		i++
+		value, next, keepGoing, err := processNextString(remainingArgs)
 		if err != nil {
-			log.Fatalf("failed to hex decode fragment string - %s", err)
+			log.Fatalf("failed to process value %d - %s", i, err)
 		}
-		value = temp
-	} else {
-		log.Println("reading value from stdin...")
-		buff := bytes.NewBuffer(nil)
-		_, err := io.Copy(buff, os.Stdin)
-		if err != nil {
-			log.Fatalf("failed to read data from stdin - %s", err)
+
+		values = append(values, value...)
+		if !keepGoing {
+			break
 		}
-		value = buff.Bytes()
-		log.Printf("read '0x%x'", value)
+
+		remainingArgs = next
 	}
 
-	switch mode {
-	case createStringMode:
-		fmt.Print(strings.Repeat("A", *createStringLen))
-	case appendStringMode:
-		if len(*prefixString) == 0 {
-			_, err := io.Copy(os.Stdout, os.Stdin)
-			if err != nil {
-				log.Fatalf("failed to copy from stdin - %s", err)
-			}
-		} else {
-			fmt.Print(*prefixString)
-		}
-	}
-
-	if *toWrongEndian {
-		decodedFragmentLen := len(value)
-		temp := make([]byte, decodedFragmentLen)
-		for i := range value {
-			temp[decodedFragmentLen-1-i] = value[i]
-		}
-		value = temp
-	}
-
-	switch *outputFormat {
-	case "hex":
-		fmt.Printf("0x%x", value)
-	case "raw":
-		fmt.Printf("%s", value)
+	switch *outputEncoding {
+	case hexFormat:
+		fmt.Printf("%x", values)
+	case rawFormat:
+		fmt.Printf("%s", values)
+	case b64Format:
+		fmt.Print(base64.StdEncoding.EncodeToString(values))
 	default:
-		log.Fatalf("unknown output format: '%s'", outputFormat)
+		log.Fatalf("unknown output format: '%s'", *outputEncoding)
 	}
 
 	if !*noNewLine {
 		fmt.Println()
 	}
+}
+
+func newStringFlagsConfig() *stringFlagsConfig {
+	set := flag.NewFlagSet("string manipulation options", flag.ExitOnError)
+	return &stringFlagsConfig{
+		set:            set,
+		inputEncoding:  set.String(
+			inputFormatArg,
+			hexFormat,
+			fmt.Sprintf("The input encoding type (%s)", supportedIOEncodingStr())),
+		repeatString:   set.Uint(
+			repeatStringArg,
+			0,
+			"Create a new string n bytes long"),
+		pattern:       set.Uint(
+			"pattern",
+			0,
+			"Create a pattern string (not well tested, sorry)"),
+		swapEndianness: set.Bool(
+			wrongEndianArg,
+			false,
+			"Swap the endianness of the resulting string"),
+	}
+}
+
+func supportedIOEncodingStr() string {
+	return fmt.Sprintf("'%s', '%s', '%s'", b64Format, hexFormat, rawFormat)
+}
+
+type stringFlagsConfig struct {
+	set            *flag.FlagSet
+	inputEncoding  *string
+	repeatString   *uint
+	pattern        *uint
+	swapEndianness *bool
+}
+
+func processNextString(remainingOSArgs []string) ([]byte, []string, bool, error) {
+	remainingOSArgsLen := len(remainingOSArgs)
+	if remainingOSArgsLen == 0 {
+		return nil, nil, false, fmt.Errorf("please specify an input value")
+	}
+	stringFlags := newStringFlagsConfig()
+	stringFlags.set.Parse(remainingOSArgs[1:])
+
+	var value []byte
+	var err error
+	switch *stringFlags.inputEncoding {
+	case rawFormat:
+		value = []byte(remainingOSArgs[0])
+	case b64Format:
+		value, err = base64.StdEncoding.DecodeString(remainingOSArgs[0])
+		if err != nil {
+			return nil, nil, false, fmt.Errorf("failed to base64 decode value - %s", err)
+		}
+	default:
+		value, err = hex.DecodeString(strings.TrimPrefix(remainingOSArgs[0], "0x"))
+		if err != nil {
+			return nil, nil, false, fmt.Errorf("failed to hex decode value - %s", err)
+		}
+	}
+
+	if *stringFlags.pattern > 0 {
+		value = pattern(int(*stringFlags.pattern))
+	}
+
+	if *stringFlags.repeatString > 0 {
+		value = bytes.Repeat(value, int(*stringFlags.repeatString))
+	}
+
+	if *stringFlags.swapEndianness {
+		decodedLen := len(value)
+		temp := make([]byte, decodedLen)
+		for i := range value {
+			temp[decodedLen-1-i] = value[i]
+		}
+		value = temp
+	}
+
+	return value, stringFlags.set.Args(), len(stringFlags.set.Args()) > 0, nil
+}
+
+func pattern(length int) []byte {
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	result := bytes.NewBuffer(nil)
+	alphabetIndex := 0
+	var set uint8
+	for i := 0; i < length; i++ {
+		if i%2 == 0 {
+			result.WriteString(string(letters[alphabetIndex]))
+			if alphabetIndex < len(letters)-1 {
+				alphabetIndex++
+			} else {
+				alphabetIndex = 0
+				set++
+			}
+		} else {
+			result.WriteString(fmt.Sprintf("%d", set))
+		}
+	}
+
+	return result.Bytes()
 }
