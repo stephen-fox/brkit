@@ -48,6 +48,7 @@ func main() {
 		log.Fatalf("failed to hex decode fragment string - %s", err)
 	}
 
+	*pattern = strings.TrimPrefix(*pattern, "0x")
 	if *patternTohex {
 		*pattern = fmt.Sprintf("%x", *pattern)
 	}
