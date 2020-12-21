@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -12,6 +14,10 @@ func main() {
 		"p",
 		"",
 		"The pattern string to search")
+	patternTohex := flag.Bool(
+		"tohex",
+		false,
+		"Encode pattern in hexadecimal encoding before searching it")
 	fragment := flag.String(
 		"f",
 		"",
@@ -36,11 +42,19 @@ func main() {
 	}
 
 	*fragment = strings.TrimPrefix(*fragment, "0x")
-
 	decodedFragment := make([]byte, hex.DecodedLen(len(*fragment)))
 	_, err := hex.Decode(decodedFragment, []byte(*fragment))
 	if err != nil {
 		log.Fatalf("failed to hex decode fragment string - %s", err)
+	}
+
+	if *patternTohex {
+		*pattern = fmt.Sprintf("%x", *pattern)
+	}
+
+	patternRaw, err := hex.DecodeString(*pattern)
+	if err != nil {
+		log.Fatalf("failed to hex decode pattern - %s", err)
 	}
 
 	if *wrongEndian {
@@ -57,7 +71,7 @@ func main() {
 			log.Printf("trying fragment: '%s'", decodedFragment)
 		}
 
-		index := strings.Index(*pattern, string(decodedFragment))
+		index := bytes.Index(patternRaw, decodedFragment)
 		if index < 0 {
 			newDecodedFragmentLen := len(decodedFragment)
 			if !*shorten || newDecodedFragmentLen == 1 {
@@ -72,5 +86,5 @@ func main() {
 		return
 	}
 
-	log.Fatalf("failed to find fragment '%s' in pattern", *fragment)
+	log.Fatalf("failed to find fragment '%x' in pattern", decodedFragment)
 }
