@@ -79,9 +79,10 @@ func main() {
 
 	i := 0
 	var values []byte
+	pg := &patternGenerator{}
 	for {
 		i++
-		result, err := processNextString(remainingArgs)
+		result, err := processNextString(remainingArgs, pg)
 		if err != nil {
 			log.Fatalf("failed to process value %d - %s", i, err)
 		}
@@ -160,7 +161,7 @@ type processNextStringResult struct {
 	remainingArgs []string
 }
 
-func processNextString(remainingOSArgs []string) (*processNextStringResult, error) {
+func processNextString(remainingOSArgs []string, pg *patternGenerator) (*processNextStringResult, error) {
 	remainingOSArgsLen := len(remainingOSArgs)
 	if remainingOSArgsLen == 0 {
 		return nil, fmt.Errorf("please specify an input value")
@@ -186,7 +187,7 @@ func processNextString(remainingOSArgs []string) (*processNextStringResult, erro
 	}
 
 	if *stringFlags.pattern > 0 {
-		value = pattern(int(*stringFlags.pattern))
+		value = pg.pattern(int(*stringFlags.pattern))
 	}
 
 	if *stringFlags.repeatString > 0 {
@@ -209,22 +210,25 @@ func processNextString(remainingOSArgs []string) (*processNextStringResult, erro
 	}, nil
 }
 
-func pattern(length int) []byte {
+type patternGenerator struct {
+	alphabetIndex int
+	set           uint8
+}
+
+func (o *patternGenerator) pattern(length int) []byte {
 	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	result := bytes.NewBuffer(nil)
-	alphabetIndex := 0
-	var set uint8
 	for i := 0; i < length; i++ {
 		if i%2 == 0 {
-			result.WriteString(string(letters[alphabetIndex]))
-			if alphabetIndex < len(letters)-1 {
-				alphabetIndex++
+			result.WriteString(string(letters[o.alphabetIndex]))
+			if o.alphabetIndex < len(letters)-1 {
+				o.alphabetIndex++
 			} else {
-				alphabetIndex = 0
-				set++
+				o.alphabetIndex = 0
+				o.set++
 			}
 		} else {
-			result.WriteString(fmt.Sprintf("%d", set))
+			result.WriteString(fmt.Sprintf("%d", o.set))
 		}
 	}
 
