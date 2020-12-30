@@ -48,14 +48,6 @@ func main() {
 		outputFormatArg,
 		hexFormat,
 		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
-	noNewLine := flag.Bool(
-		noNewLineArg,
-		false,
-		"Do not append new line character to output")
-	noNewLineInEncoding := flag.Bool(
-		noNewLineEncArg,
-		false,
-		"Do not include a new line in encoded data")
 	printPatternStrings := flag.Bool(
 		printPatternsArg,
 		false,
@@ -100,10 +92,6 @@ func main() {
 		remainingArgs = result.remainingArgs
 	}
 
-	if !*noNewLineInEncoding || *outputEncoding == rawFormat {
-		values = append(values, '\n')
-	}
-
 	switch *outputEncoding {
 	case hexFormat:
 		fmt.Printf("%x", values)
@@ -113,10 +101,6 @@ func main() {
 		fmt.Print(base64.StdEncoding.EncodeToString(values))
 	default:
 		log.Fatalf("unknown output format: '%s'", *outputEncoding)
-	}
-
-	if !*noNewLine {
-		fmt.Println()
 	}
 }
 
