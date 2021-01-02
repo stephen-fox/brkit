@@ -22,6 +22,7 @@ const (
 	patternArg      = "pattern"
 	wrongEndianArg  = "wendian"
 	repeatStringArg = "repeat"
+	commentArg      = "comment"
 
 	hexFormat = "hex"
 	rawFormat = "raw"
@@ -122,16 +123,16 @@ func main() {
 func newStringFlagsConfig() *stringFlagsConfig {
 	set := flag.NewFlagSet("string manipulation options", flag.ExitOnError)
 	return &stringFlagsConfig{
-		set:            set,
-		inputEncoding:  set.String(
+		set: set,
+		inputEncoding: set.String(
 			inputFormatArg,
 			hexFormat,
 			fmt.Sprintf("The input encoding type (%s)", supportedIOEncodingStr())),
-		repeatString:   set.Uint(
+		repeatString: set.Uint(
 			repeatStringArg,
 			0,
 			"Create a new string n bytes long"),
-		pattern:       set.Uint(
+		pattern: set.Uint(
 			patternArg,
 			0,
 			"Create a pattern string n bytes long (not well tested, sorry)"),
@@ -139,6 +140,10 @@ func newStringFlagsConfig() *stringFlagsConfig {
 			wrongEndianArg,
 			false,
 			"Swap the endianness of the resulting string"),
+		comment: set.String(
+			commentArg,
+			"",
+			"Specify a comment for this value"),
 	}
 }
 
@@ -152,6 +157,7 @@ type stringFlagsConfig struct {
 	repeatString   *uint
 	pattern        *uint
 	swapEndianness *bool
+	comment        *string
 }
 
 type processNextStringResult struct {
