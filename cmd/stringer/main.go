@@ -36,9 +36,9 @@ usage:
   ` + appName + ` [main options] [string [string manipulation options]...]
 
 examples:
-  ` + appName + ` A -` + patternArg + ` 200
+  ` + appName + ` 0x41 -` + patternArg + ` 200
   ` + appName + ` 0x080491e2 -` + wrongEndianArg + `
-  ` + appName + ` A -` + repeatStringArg + ` 184 -` + inputFormatArg + ` ` + rawFormat + ` 0x080491e2 -` + wrongEndianArg + `
+  ` + appName + ` 0x41 -` + repeatStringArg + ` 184 0x080491e2 -` + wrongEndianArg + `
 
 main options:
 `
