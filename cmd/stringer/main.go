@@ -13,9 +13,9 @@ import (
 
 const (
 	outputFormatArg  = "o"
-	noNewLineArg     = "n"
-	noNewLineEncArg  = "N"
 	printPatternsArg = "printpatterns"
+	patternIndexArg  = "pindex"
+	patternSetArg    = "pset"
 	helpArg          = "h"
 
 	inputFormatArg  = "i"
@@ -52,6 +52,14 @@ func main() {
 		printPatternsArg,
 		false,
 		"Print pattern strings to stderr for future reference")
+	patternIndex := flag.Uint(
+		patternIndexArg,
+		0,
+		"The initial pattern index value")
+	patternSet := flag.Uint(
+		patternSetArg,
+		0,
+		"The initial pattern set value")
 	help := flag.Bool(
 		helpArg,
 		false,
@@ -71,7 +79,10 @@ func main() {
 
 	i := 0
 	var values []byte
-	pg := &patternGenerator{}
+	pg := &patternGenerator{
+		alphabetIndex: int(*patternIndex),
+		set:           uint8(*patternSet),
+	}
 	for {
 		i++
 		result, err := processNextString(remainingArgs, pg)
@@ -90,6 +101,10 @@ func main() {
 		}
 
 		remainingArgs = result.remainingArgs
+	}
+
+	if pg.alphabetIndex > 0 || pg.set > 0 {
+		log.Printf("pattern ended at index %d, set %d", pg.alphabetIndex, pg.set)
 	}
 
 	switch *outputEncoding {
