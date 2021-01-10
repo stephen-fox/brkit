@@ -47,7 +47,7 @@ main options:
 func main() {
 	outputEncoding := flag.String(
 		outputFormatArg,
-		hexFormat,
+		rawFormat,
 		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
 	printPatternStrings := flag.Bool(
 		printPatternsArg,
