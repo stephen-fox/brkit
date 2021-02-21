@@ -15,7 +15,7 @@ func TestPadStartOfStringWithCharUntilLen(t *testing.T) {
 }
 
 func TestFormatStringStackAlignedLen(t *testing.T) {
-	formatStr := "|%1000$p|"
+	formatStr := []byte("|%1000$p|")
 
 	res := formatStringStackAlignedLen(formatStr, 8)
 	exp := 16
