@@ -150,6 +150,14 @@ type FormatStringParamLeaker struct {
 	info      formatStringInfo
 }
 
+func (o FormatStringParamLeaker) MemoryAtOrExit(pointer Pointer, process *Process) []byte {
+	p, err := o.MemoryAt(pointer, process)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer, err))
+	}
+	return p
+}
+
 func (o FormatStringParamLeaker) MemoryAt(pointer Pointer, process *Process) ([]byte, error) {
 	return getFormatStringLeakedData(process, append(o.formatStr, pointer...), o.info)
 }

