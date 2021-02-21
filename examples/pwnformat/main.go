@@ -30,7 +30,7 @@ func main() {
 		proc.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
 	}
 
-	leaker := process.SetupFormatStringParamLeakerOrExit(process.FormatStringParamLeakerConfig{
+	leaker := process.LeakUsingFormatStringDirectParamOrExit(process.FormatStringDirectParamConfig{
 		GetProcessFn: func() *process.Process {
 			return proc
 		},

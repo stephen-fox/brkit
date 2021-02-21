@@ -11,6 +11,9 @@ import (
 	"sync"
 )
 
+// TODO: Return cleanup func separately to make it clear
+//  end user needs to call it?
+
 func ExecOrExit(cmd *exec.Cmd) *Process {
 	p, err := Exec(cmd)
 	if err != nil {
