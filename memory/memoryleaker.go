@@ -1,4 +1,4 @@
-package process
+package memory
 
 import (
 	"bytes"
@@ -8,15 +8,20 @@ import (
 	"strings"
 )
 
+type ProcessIO interface {
+	WriteLine(p []byte) error
+	ReadUntil(p []byte) ([]byte, error)
+}
+
 type FormatStringDirectParamConfig struct {
-	GetProcessFn func() *Process
+	ProcessIOFn  func() ProcessIO
 	MaxNumParams int
 	PointerSize  int
 	Verbose      *log.Logger
 }
 
 func (o FormatStringDirectParamConfig) validate() error {
-	if o.GetProcessFn == nil {
+	if o.ProcessIOFn == nil {
 		return fmt.Errorf("get process function cannot be nil")
 	}
 
@@ -115,7 +120,7 @@ func LeakUsingFormatStringDirectParam(config FormatStringDirectParamConfig) (*Fo
 		}
 
 		addressFromFormatFunc, err := leakDataWithFormatString(
-			config.GetProcessFn(),
+			config.ProcessIOFn(),
 			str,
 			formatStringConfig.info)
 		if err != nil {
@@ -150,19 +155,19 @@ type FormatStringMemoryLeaker struct {
 	info      formatStringInfo
 }
 
-func (o FormatStringMemoryLeaker) MemoryAtOrExit(pointer Pointer, process *Process) []byte {
-	p, err := o.MemoryAt(pointer, process)
+func (o FormatStringMemoryLeaker) MemoryAtOrExit(pointer Pointer, processIO ProcessIO) []byte {
+	p, err := o.MemoryAt(pointer, processIO)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer, err))
 	}
 	return p
 }
 
-func (o FormatStringMemoryLeaker) MemoryAt(pointer Pointer, process *Process) ([]byte, error) {
-	return leakDataWithFormatString(process, append(o.formatStr, pointer...), o.info)
+func (o FormatStringMemoryLeaker) MemoryAt(pointer Pointer, processIO ProcessIO) ([]byte, error) {
+	return leakDataWithFormatString(processIO, append(o.formatStr, pointer...), o.info)
 }
 
-func leakDataWithFormatString(process *Process, formatStr []byte, info formatStringInfo) ([]byte, error) {
+func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringInfo) ([]byte, error) {
 	err := process.WriteLine(formatStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write format string to process - %w", err)

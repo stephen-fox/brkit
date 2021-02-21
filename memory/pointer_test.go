@@ -1,4 +1,4 @@
-package process
+package memory
 
 import (
 	"bytes"

