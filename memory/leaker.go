@@ -160,6 +160,10 @@ type FormatStringLeaker struct {
 	procIOFn  func() ProcessIO
 }
 
+func (o FormatStringLeaker) FormatString() []byte {
+	return o.formatStr
+}
+
 func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 	p, err := o.MemoryAt(pointer)
 	if err != nil {
@@ -212,6 +216,10 @@ type FormatStringDPALeaker struct {
 	config    FormatStringDPAConfig
 	paddedLen int
 	dpaSting  dpaFormatString
+}
+
+func (o FormatStringDPALeaker) FormatString() []byte {
+	return o.dpaSting.paddedTo(o.paddedLen)
 }
 
 func (o FormatStringDPALeaker) FindParamNumberOrExit(target []byte) (int, bool) {

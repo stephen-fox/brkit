@@ -42,7 +42,7 @@ func (o Pointer) HexString() string {
 func HexStringToPointerOrExit(hexStr string, pm PointerMaker, bits int) Pointer {
 	res, err := HexStringToPointer(hexStr, pm, bits)
 	if err != nil {
-		defaultExitFn(err)
+		defaultExitFn(fmt.Errorf("failed to convert '%s' to pointer - %w", hexStr, err))
 	}
 	return res
 }
