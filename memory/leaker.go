@@ -85,6 +85,7 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 		stackAlignedLen(unpaddedStr, config.PointerSize))
 
 	return &FormatStringLeaker{
+		procIOFn:  config.ProcessIOFn,
 		formatStr: finalPaddedFormatStr,
 		info:      formatString.info,
 	}, nil
