@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// TODO: Process cleanup func is not accessible.
+//
 // TODO: Return cleanup func separately to make it clear
 //  end user needs to call it?
 
