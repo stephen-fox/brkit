@@ -170,7 +170,7 @@ func (o Process) ReadUntil(p []byte) ([]byte, error) {
 
 		buff.WriteByte(b)
 		if o.logger != nil {
-			o.logger.Printf("ReadUntil buff is now: 0x%x", buff.Bytes())
+			o.logger.Printf("ReadUntil buff is now: %s", buff.Bytes())
 		}
 		if bytes.Contains(buff.Bytes(), p) {
 			if o.logger != nil {
