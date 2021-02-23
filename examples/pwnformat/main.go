@@ -29,6 +29,7 @@ func main() {
 	}
 
 	if *isMuyVerbose {
+		verbose = log.New(log.Writer(), log.Prefix(), log.Flags())
 		muyVerbose = log.New(log.Writer(), log.Prefix(), log.Flags())
 	}
 
@@ -42,7 +43,7 @@ func main() {
 	}
 	proc.SetLogger(muyVerbose)
 
-	leakMemoryAtLoop(proc)
+	leakParams(proc)
 }
 
 func leakParams(proc *process.Process) {
@@ -52,11 +53,11 @@ func leakParams(proc *process.Process) {
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
-		Verbose:      muyVerbose,
+		Verbose:      verbose,
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string is '%s'", leaker.FormatString())
+		verbose.Printf("format string is '%s'", leaker.FormatString(1))
 	}
 
 	log.Printf("press enter when ready")
@@ -80,11 +81,11 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
-		Verbose:      muyVerbose,
+		Verbose:      verbose,
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string is '%s'", leaker.FormatString())
+		verbose.Printf("format string is '%s'", leaker.FormatString(1))
 	}
 
 	for {
@@ -111,7 +112,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 		},
 		MaxNumParams: 200,
 		PointerSize:  8,
-		Verbose:      muyVerbose,
+		Verbose:      verbose,
 	})
 
 	if verbose != nil {
