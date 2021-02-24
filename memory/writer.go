@@ -61,18 +61,21 @@ func (o DPAFormatStringWriter) WriteAtOrExit(i int, pointer Pointer) {
 	}
 }
 
-func (o DPAFormatStringWriter) WriteAt(i int, pointer Pointer) error {
-	if i > o.config.MaxWrite {
+func (o DPAFormatStringWriter) WriteAt(numToWrite int, pointer Pointer) error {
+	if numToWrite > o.config.MaxWrite {
 		return fmt.Errorf("the specified write size of %d cannot be greater than the configured max of %d",
-			i, o.config.MaxWrite)
+			numToWrite, o.config.MaxWrite)
 	}
-
-	buff := bytes.NewBuffer(nil)
-	o.leakConfig.builder.appendDPAWrite(i, o.leakConfig.paramNum, []byte{'n'}, buff)
 
 	_, err := leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(o.leakConfig.builder.build(o.leakConfig.alignLen, buff), pointer...),
+		append(o.FormatString(numToWrite), pointer...),
 		o.leakConfig.builder)
 	return err
+}
+
+func (o DPAFormatStringWriter) FormatString(numToWrite int) []byte {
+	buff := bytes.NewBuffer(nil)
+	o.leakConfig.builder.appendDPAWrite(numToWrite, o.leakConfig.paramNum, []byte{'n'}, buff)
+	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff)
 }
