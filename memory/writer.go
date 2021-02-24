@@ -31,7 +31,6 @@ func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStr
 			fmtStrBuilder := formatStringBuilder{
 				prefixAndSuffix:  []byte("|"),
 				endOfStringDelim: []byte("foozlefu"),
-				pointerSize:      config.DPAConfig.PointerSize,
 			}
 			buff := bytes.NewBuffer(nil)
 			fmtStrBuilder.appendDPAWrite(config.MaxWrite, config.DPAConfig.MaxNumParams, []byte("p"), buff)

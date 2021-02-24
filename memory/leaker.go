@@ -53,7 +53,6 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 			builder := formatStringBuilder{
 				prefixAndSuffix:  []byte("|"),
 				endOfStringDelim: []byte("foozlefu"),
-				pointerSize:      config.PointerSize,
 			}
 			buff := bytes.NewBuffer(nil)
 			builder.appendDPALeak(config.MaxNumParams, []byte("p"), buff)
@@ -142,9 +141,6 @@ type dpaLeakConfig struct {
 type formatStringBuilder struct {
 	prefixAndSuffix  []byte
 	endOfStringDelim []byte
-
-	// TODO: Remove.
-	pointerSize int
 }
 
 // The resulting string is going to look like this:
@@ -238,7 +234,6 @@ func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALea
 	fmtStrBuilder := formatStringBuilder{
 		prefixAndSuffix:  []byte("|"),
 		endOfStringDelim: []byte("foozlefu"),
-		pointerSize:      config.PointerSize,
 	}
 
 	unalignedBuff := bytes.NewBuffer(nil)
