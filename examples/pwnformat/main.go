@@ -64,6 +64,8 @@ func leakParams(proc *process.Process) {
 	log.Printf("press enter when ready")
 	fmt.Scanln()
 
+	log.Fatalln("need to re-do this work because of updated leak logic")
+
 	// _IO_2_1_stderr_       - 0x7fefcc8be5c0 - 21
 	// __libc_start_main+234 - 0x7fefcc725d0a - 45
 	// _IO_file_jumps        - 0x7fefcc8bf4a0 - 28

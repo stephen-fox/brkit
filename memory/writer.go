@@ -26,7 +26,7 @@ func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStr
 	}
 
 	leakConfig, err := createDPAFormatStringLeakWithLastValueAsArg(dpaLeakSetupConfig{
-		formatStringDPAConfig:     config.DPAConfig,
+		dpaConfig: config.DPAConfig,
 		builderAndMemAlignedLenFn: func() (formatStringBuilder, int) {
 			fmtStrBuilder := formatStringBuilder{
 				prefixAndSuffix:  []byte("|"),

