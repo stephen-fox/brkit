@@ -159,6 +159,10 @@ func writeMemoryLoop(proc *process.Process) {
 		},
 	})
 
+	if verbose != nil {
+		verbose.Printf("format string is 0x%x", writer.FormatString(1))
+	}
+
 	for {
 		log.Printf("please enter a memory address to write to and a number followed by 'enter':\n")
 		str, err := bufio.NewReader(os.Stdin).ReadString('\n')
