@@ -160,7 +160,11 @@ func writeMemoryLoop(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string is 0x%x", writer.FormatString(1))
+		str, err := writer.Lower32BitsFormatString(10)
+		if err != nil {
+			log.Fatalf("failed to get format string for verbose log - %s", err)
+		}
+		verbose.Printf("format string is 0x%x", str)
 	}
 
 	for {
@@ -193,7 +197,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		writer.WriteAtOrExit(num, pointer)
+		writer.OverwriteLower32BitsAtOrExit(num, pointer)
 
 		log.Printf("wrote %d to %s", num, pointer.HexString())
 	}

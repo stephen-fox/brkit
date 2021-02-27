@@ -51,7 +51,7 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 		dpaConfig: config,
 		builderAndMemAlignedLenFn: func() (formatStringBuilder, int) {
 			builder := formatStringBuilder{
-				prefixAndSuffix:  []byte("|"),
+				returnDataDelim:  []byte("|"),
 				endOfStringDelim: []byte("foozlefu"),
 			}
 			buff := bytes.NewBuffer(nil)
@@ -139,7 +139,7 @@ type dpaLeakConfig struct {
 }
 
 type formatStringBuilder struct {
-	prefixAndSuffix  []byte
+	returnDataDelim  []byte
 	endOfStringDelim []byte
 }
 
@@ -176,11 +176,11 @@ func (o formatStringBuilder) appendDPALeak(paramNumber int, specifiers []byte, b
 }
 
 func (o formatStringBuilder) appendPrefix(buff *bytes.Buffer) {
-	buff.Write(o.prefixAndSuffix)
+	buff.Write(o.returnDataDelim)
 }
 
 func (o formatStringBuilder) appendSuffix(buff *bytes.Buffer) {
-	buff.Write(o.prefixAndSuffix)
+	buff.Write(o.returnDataDelim)
 	buff.Write(o.endOfStringDelim)
 }
 
@@ -189,7 +189,7 @@ func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.B
 }
 
 func (o formatStringBuilder) isSuitableForLeaking() error {
-	if len(o.prefixAndSuffix) == 0 {
+	if len(o.returnDataDelim) == 0 {
 		return fmt.Errorf("prefix and suffix field cannot be empty")
 	}
 	return nil
@@ -232,7 +232,7 @@ func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALea
 	}
 
 	fmtStrBuilder := formatStringBuilder{
-		prefixAndSuffix:  []byte("|"),
+		returnDataDelim:  []byte("|"),
 		endOfStringDelim: []byte("foozlefu"),
 	}
 
@@ -325,13 +325,13 @@ func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatSt
 		return nil, fmt.Errorf("failed to find end of string delim in process output - %w", err)
 	}
 
-	firstSepIndex := bytes.Index(token, info.prefixAndSuffix)
+	firstSepIndex := bytes.Index(token, info.returnDataDelim)
 	if firstSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain first foramt string separator")
 	}
 
 	lineWithoutFirstSep := token[firstSepIndex+1:]
-	lastSepIndex := bytes.Index(lineWithoutFirstSep, info.prefixAndSuffix)
+	lastSepIndex := bytes.Index(lineWithoutFirstSep, info.returnDataDelim)
 	if lastSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain second foramt string separator")
 	}

