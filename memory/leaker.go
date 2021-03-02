@@ -9,11 +9,6 @@ import (
 	mathrand "math/rand"
 )
 
-type ProcessIO interface {
-	WriteLine(p []byte) error
-	ReadUntil(p []byte) ([]byte, error)
-}
-
 type FormatStringDPAConfig struct {
 	ProcessIOFn  func() ProcessIO
 	MaxNumParams int
