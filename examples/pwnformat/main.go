@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"log"
@@ -122,6 +123,8 @@ func leakMemoryAtLoop(proc *process.Process) {
 		verbose.Printf("format string is '%s'", leaker.FormatString())
 	}
 
+	pm := memory.PointerMakerForX68_64()
+
 	for {
 		log.Printf("please enter a memory address to read from followed by 'enter':\n")
 		pointerStr, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -129,10 +132,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 			log.Fatalln(err)
 		}
 
-		pointer, convErr := memory.HexStringToPointer(
-			pointerStr[0:len(pointerStr)-1],
-			memory.PointerMakerForX86(),
-			64)
+		pointer, convErr := pm.HexString(pointerStr, binary.BigEndian)
 		if convErr != nil {
 			log.Printf("failed to convert pointer string - %s", err)
 			continue
@@ -167,8 +167,10 @@ func writeMemoryLoop(proc *process.Process) {
 		verbose.Printf("format string is 0x%x", str)
 	}
 
+	pm := memory.PointerMakerForX68_64()
+
 	for {
-		log.Printf("please enter a memory address to write to and a number followed by 'enter':\n")
+		log.Printf("please enter a memory address to write to and a number followed by 'enter':")
 		str, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil {
 			log.Fatalln(err)
@@ -180,10 +182,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		pointer, convErr := memory.HexStringToPointer(
-			parts[0],
-			memory.PointerMakerForX86(),
-			64)
+		pointer, convErr := pm.HexString(parts[0], binary.BigEndian)
 		if convErr != nil {
 			log.Printf("failed to convert pointer string - %s", convErr)
 			continue
