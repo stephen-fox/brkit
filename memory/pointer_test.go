@@ -69,3 +69,16 @@ func TestPointerMakerForX68_64_HexBytes(t *testing.T) {
 		t.Fatalf("expected 0x%x - got 0x%x", exp, pointer)
 	}
 }
+
+func TestPointer_Uint(t *testing.T) {
+	pm := PointerMakerForX68_64()
+	pointer, err := pm.HexBytes([]byte("0x00000000deadbeef"), binary.BigEndian)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	address := pointer.Uint(binary.LittleEndian)
+	if address != 0xdeadbeef {
+		t.Fatalf("expected 0xdeadbeef - got %x", address)
+	}
+}

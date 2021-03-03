@@ -9,6 +9,7 @@ import (
 	mathrand "math/rand"
 )
 
+// TODO: Rename to 'DPAFormatStringConfig'.
 type FormatStringDPAConfig struct {
 	ProcessIOFn  func() ProcessIO
 	MaxNumParams int
@@ -154,6 +155,7 @@ func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
 	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer...), o.builder)
 }
 
+// TODO: Rename to: 'NewDPAFormatStringLeakerOrExit'.
 func NewFormatStringDPALeakerOrExit(config FormatStringDPAConfig) *FormatStringDPALeaker {
 	res, err := NewFormatStringDPALeaker(config)
 	if err != nil {
@@ -162,6 +164,7 @@ func NewFormatStringDPALeakerOrExit(config FormatStringDPAConfig) *FormatStringD
 	return res
 }
 
+// TODO: Rename to: 'NewDPAFormatStringLeaker'.
 func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALeaker, error) {
 	err := config.validate()
 	if err != nil {

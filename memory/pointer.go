@@ -72,8 +72,24 @@ func (o PointerMaker) Uint(address uint) Pointer {
 	return out
 }
 
+func (o PointerMaker) HexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.HexString(hexStr, sourceEndianness)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
+	}
+	return p
+}
+
 func (o PointerMaker) HexString(hexStr string, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	return o.HexBytes([]byte(hexStr), sourceEndianness)
+}
+
+func (o PointerMaker) HexBytesOrExit(hexBytes []byte, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.HexBytes(hexBytes, sourceEndianness)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
+	}
+	return p
 }
 
 func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
@@ -118,6 +134,19 @@ func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrde
 }
 
 type Pointer []byte
+
+func (o Pointer) Uint(endianness binary.ByteOrder) uint {
+	switch l := len(o); l {
+	case 2:
+		return uint(endianness.Uint16(o))
+	case 4:
+		return uint(endianness.Uint32(o))
+	case 8:
+		return uint(endianness.Uint64(o))
+	default:
+		panic(fmt.Errorf("unsupported pointer size %d", l))
+	}
+}
 
 func (o Pointer) HexString() string {
 	return fmt.Sprintf("0x%x", o)
