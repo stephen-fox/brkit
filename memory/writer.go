@@ -72,7 +72,7 @@ func (o DPAFormatStringWriter) OverwriteLower32BitsAt(newLower32Bits int, pointe
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer...),
+		append(str, pointer.Bytes()...),
 		o.leakConfig.builder)
 	return err
 }
@@ -104,7 +104,7 @@ func (o DPAFormatStringWriter) OverwriteLower16BitsAt(newLower16Bits int, pointe
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer...),
+		append(str, pointer.Bytes()...),
 		o.leakConfig.builder)
 	return err
 }
@@ -136,7 +136,7 @@ func (o DPAFormatStringWriter) OverwriteLower8BitsAt(newLower8Bits int, pointer 
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer...),
+		append(str, pointer.Bytes()...),
 		o.leakConfig.builder)
 	return err
 }

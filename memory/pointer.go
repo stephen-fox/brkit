@@ -69,7 +69,11 @@ func (o PointerMaker) Uint(address uint) Pointer {
 	default:
 		panic(fmt.Sprintf("unsupported bits: %d", o.bits))
 	}
-	return out
+	return Pointer{
+		byteOrder: o.byteOrder,
+		address:   address,
+		bytes:     out,
+	}
 }
 
 func (o PointerMaker) HexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
@@ -97,18 +101,18 @@ func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrde
 
 	hexStrLen := len(hexBytesNoPrefix)
 	if hexStrLen == 0 {
-		return nil, fmt.Errorf("hex string cannot be zero-length")
+		return Pointer{}, fmt.Errorf("hex string cannot be zero-length")
 	}
 
 	maxLen := o.ptrSize * 2
 	if hexStrLen > maxLen {
-		return nil, fmt.Errorf("hex string cannot be longer than %d chars - it is %d chars long",
+		return Pointer{}, fmt.Errorf("hex string cannot be longer than %d chars - it is %d chars long",
 			maxLen, hexStrLen)
 	}
 
-	numZeros := maxLen - hexStrLen
-	if numZeros > 0 {
-		zeros := bytes.Repeat([]byte("0"), numZeros)
+	leadingZeros := maxLen - hexStrLen
+	if leadingZeros > 0 {
+		zeros := bytes.Repeat([]byte("0"), leadingZeros)
 		if sourceEndianness.String() == binary.LittleEndian.String() {
 			hexBytesNoPrefix = append(hexBytesNoPrefix, zeros...)
 		} else {
@@ -119,35 +123,52 @@ func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrde
 	decoded := make([]byte, o.ptrSize)
 	_, err := hex.Decode(decoded, hexBytesNoPrefix)
 	if err != nil {
-		return nil, fmt.Errorf("failed to hex decode data - %w", err)
+		return Pointer{}, fmt.Errorf("failed to hex decode data - %w", err)
 	}
 
+	var canonicalBytes []byte
 	if sourceEndianness.String() == o.byteOrder.String() {
-		return decoded, nil
+		canonicalBytes = decoded
+	} else {
+		canonicalBytes = make([]byte, o.ptrSize)
+		for i := 0; i < o.ptrSize; i++ {
+			canonicalBytes[o.ptrSize-1-i] = decoded[i]
+		}
 	}
 
-	wrongEndian := make([]byte, o.ptrSize)
-	for i := 0; i < o.ptrSize; i++ {
-		wrongEndian[o.ptrSize-1-i] = decoded[i]
+	var address uint
+	switch o.ptrSize {
+	case 2:
+		address = uint(o.byteOrder.Uint16(canonicalBytes))
+	case 4:
+		address = uint(o.byteOrder.Uint32(canonicalBytes))
+	case 8:
+		address = uint(o.byteOrder.Uint64(canonicalBytes))
+	default:
+		return Pointer{}, fmt.Errorf("unsupported pointer size: %d", o.ptrSize)
 	}
-	return wrongEndian, nil
+
+	return Pointer{
+		byteOrder: o.byteOrder,
+		address:   address,
+		bytes:     canonicalBytes,
+	}, nil
 }
 
-type Pointer []byte
+type Pointer struct {
+	byteOrder binary.ByteOrder
+	address   uint
+	bytes     []byte
+}
 
-func (o Pointer) Uint(endianness binary.ByteOrder) uint {
-	switch l := len(o); l {
-	case 2:
-		return uint(endianness.Uint16(o))
-	case 4:
-		return uint(endianness.Uint32(o))
-	case 8:
-		return uint(endianness.Uint64(o))
-	default:
-		panic(fmt.Errorf("unsupported pointer size %d", l))
-	}
+func (o Pointer) Bytes() []byte {
+	return o.bytes
+}
+
+func (o Pointer) Uint() uint {
+	return o.address
 }
 
 func (o Pointer) HexString() string {
-	return fmt.Sprintf("0x%x", o)
+	return fmt.Sprintf("0x%x", o.Bytes())
 }

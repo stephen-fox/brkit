@@ -146,13 +146,13 @@ func (o FormatStringLeaker) FormatString() []byte {
 func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 	p, err := o.MemoryAt(pointer)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer, err))
+		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer.Bytes(), err))
 	}
 	return p
 }
 
 func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
-	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer...), o.builder)
+	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer.Bytes()...), o.builder)
 }
 
 // TODO: Rename to: 'NewDPAFormatStringLeakerOrExit'.
