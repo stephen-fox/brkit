@@ -50,7 +50,7 @@ func main() {
 }
 
 func leakParams(proc *process.Process) {
-	leaker := memory.NewFormatStringDPALeakerOrExit(memory.FormatStringDPAConfig{
+	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
 		ProcessIOFn: func() memory.ProcessIO {
 			return proc
 		},
@@ -78,7 +78,7 @@ func leakParams(proc *process.Process) {
 }
 
 func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
-	leaker := memory.NewFormatStringDPALeakerOrExit(memory.FormatStringDPAConfig{
+	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
 		ProcessIOFn: func() memory.ProcessIO {
 			return proc
 		},
@@ -109,7 +109,7 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 }
 
 func leakMemoryAtLoop(proc *process.Process) {
-	leaker := memory.SetupFormatStringLeakViaDPAOrExit(memory.FormatStringDPAConfig{
+	leaker := memory.SetupFormatStringLeakViaDPAOrExit(memory.DPAFormatStringConfig{
 		ProcessIOFn: func() memory.ProcessIO {
 			return proc
 		},
@@ -148,7 +148,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 func writeMemoryLoop(proc *process.Process) {
 	writer := memory.NewDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
 		MaxWrite:  999,
-		DPAConfig: memory.FormatStringDPAConfig{
+		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIOFn: func() memory.ProcessIO {
 				return proc
 			},

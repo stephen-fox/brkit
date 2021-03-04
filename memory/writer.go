@@ -9,7 +9,7 @@ import (
 // %192p|%9$n|
 type DPAFormatStringWriterConfig struct {
 	MaxWrite  int
-	DPAConfig FormatStringDPAConfig
+	DPAConfig DPAFormatStringConfig
 }
 
 func NewDPAFormatStringWriterOrExit(config DPAFormatStringWriterConfig) *DPAFormatStringWriter {

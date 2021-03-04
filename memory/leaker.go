@@ -9,15 +9,14 @@ import (
 	mathrand "math/rand"
 )
 
-// TODO: Rename to 'DPAFormatStringConfig'.
-type FormatStringDPAConfig struct {
+type DPAFormatStringConfig struct {
 	ProcessIOFn  func() ProcessIO
 	MaxNumParams int
 	PointerSize  int
 	Verbose      *log.Logger
 }
 
-func (o FormatStringDPAConfig) validate() error {
+func (o DPAFormatStringConfig) validate() error {
 	if o.ProcessIOFn == nil {
 		return fmt.Errorf("get process function cannot be nil")
 	}
@@ -33,7 +32,7 @@ func (o FormatStringDPAConfig) validate() error {
 	return nil
 }
 
-func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStringLeaker {
+func SetupFormatStringLeakViaDPAOrExit(config DPAFormatStringConfig) *FormatStringLeaker {
 	f, err := SetupFormatStringLeakViaDPA(config)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to create format string param leaker - %w", err))
@@ -41,7 +40,7 @@ func SetupFormatStringLeakViaDPAOrExit(config FormatStringDPAConfig) *FormatStri
 	return f
 }
 
-func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLeaker, error) {
+func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLeaker, error) {
 	setupConfig := dpaLeakSetupConfig{
 		dpaConfig: config,
 		builderAndMemAlignedLenFn: func() (formatStringBuilder, int) {
@@ -69,7 +68,7 @@ func SetupFormatStringLeakViaDPA(config FormatStringDPAConfig) (*FormatStringLea
 }
 
 type dpaLeakSetupConfig struct {
-	dpaConfig                 FormatStringDPAConfig
+	dpaConfig                 DPAFormatStringConfig
 	builderAndMemAlignedLenFn func() (formatStringBuilder, int)
 }
 
@@ -155,17 +154,15 @@ func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
 	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer.Bytes()...), o.builder)
 }
 
-// TODO: Rename to: 'NewDPAFormatStringLeakerOrExit'.
-func NewFormatStringDPALeakerOrExit(config FormatStringDPAConfig) *FormatStringDPALeaker {
-	res, err := NewFormatStringDPALeaker(config)
+func NewDPAFormatStringLeakerOrExit(config DPAFormatStringConfig) *DPAFormatStringLeaker {
+	res, err := NewDPAFormatStringLeaker(config)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to create new format string direct parameter access number leaker - %w", err))
 	}
 	return res
 }
 
-// TODO: Rename to: 'NewDPAFormatStringLeaker'.
-func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALeaker, error) {
+func NewDPAFormatStringLeaker(config DPAFormatStringConfig) (*DPAFormatStringLeaker, error) {
 	err := config.validate()
 	if err != nil {
 		return nil, err
@@ -179,20 +176,20 @@ func NewFormatStringDPALeaker(config FormatStringDPAConfig) (*FormatStringDPALea
 	unalignedBuff := bytes.NewBuffer(nil)
 	fmtStrBuilder.appendDPALeak(config.MaxNumParams, []byte("p"), unalignedBuff)
 
-	return &FormatStringDPALeaker{
+	return &DPAFormatStringLeaker{
 		config:     config,
 		builder:    fmtStrBuilder,
 		alignedLen: stringLenMemoryAligned(unalignedBuff.Bytes(), config.PointerSize),
 	}, nil
 }
 
-type FormatStringDPALeaker struct {
-	config     FormatStringDPAConfig
+type DPAFormatStringLeaker struct {
+	config     DPAFormatStringConfig
 	builder    formatStringBuilder
 	alignedLen int
 }
 
-func (o FormatStringDPALeaker) FindParamNumberOrExit(target []byte) (int, bool) {
+func (o DPAFormatStringLeaker) FindParamNumberOrExit(target []byte) (int, bool) {
 	i, b, err := o.FindParamNumber(target)
 	if err != nil {
 		defaultExitFn(err)
@@ -200,7 +197,7 @@ func (o FormatStringDPALeaker) FindParamNumberOrExit(target []byte) (int, bool) 
 	return i, b
 }
 
-func (o FormatStringDPALeaker) FindParamNumber(target []byte) (int, bool, error) {
+func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error) {
 	for i := 0; i < o.config.MaxNumParams; i++ {
 		result, err := o.MemoryAtParam(i)
 		if err != nil {
@@ -223,7 +220,7 @@ func (o FormatStringDPALeaker) FindParamNumber(target []byte) (int, bool, error)
 	return 0, false, nil
 }
 
-func (o FormatStringDPALeaker) MemoryAtParamOrExit(paramNumber int) []byte {
+func (o DPAFormatStringLeaker) MemoryAtParamOrExit(paramNumber int) []byte {
 	res, err := o.MemoryAtParam(paramNumber)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to get memory at param number %d - %w", paramNumber, err))
@@ -231,7 +228,7 @@ func (o FormatStringDPALeaker) MemoryAtParamOrExit(paramNumber int) []byte {
 	return res
 }
 
-func (o FormatStringDPALeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
+func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 	if paramNumber > o.config.MaxNumParams {
 		// This is a problem because it may potentially shift
 		// the arguments on the stack, and make the result
@@ -243,7 +240,7 @@ func (o FormatStringDPALeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.builder)
 }
 
-func (o FormatStringDPALeaker) FormatString(paramNum int) []byte {
+func (o DPAFormatStringLeaker) FormatString(paramNum int) []byte {
 	return o.builder.buildDPA(paramNum, []byte{'p'}, o.alignedLen)
 }
 
