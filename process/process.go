@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"sync"
 )
@@ -218,4 +219,27 @@ func (o Process) WriteLine(p []byte) error {
 
 func (o *Process) SetLogger(logger *log.Logger) {
 	o.logger = logger
+}
+
+func (o *Process) InteractiveOrExit() {
+	err := o.Interactive()
+	if err != nil {
+		defaultExitFn(fmt.Errorf("process interaction failed - %w", err))
+	}
+}
+
+func (o *Process) Interactive() error {
+	done := make(chan error, 2)
+
+	go func() {
+		_, err := io.Copy(os.Stdout, o.output)
+		done <- fmt.Errorf("failed to copy output reader to stdout - %w", err)
+	}()
+
+	go func() {
+		_, err := io.Copy(o.input, os.Stdin)
+		done <- fmt.Errorf("failed to copy stdin to input writer - %w", err)
+	}()
+
+	return <-done
 }
