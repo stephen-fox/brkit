@@ -44,6 +44,7 @@ func main() {
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
 	proc.SetLogger(muyVerbose)
+	defer proc.Cleanup()
 
 	writeMemoryLoop(proc)
 }

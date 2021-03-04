@@ -12,11 +12,6 @@ import (
 	"sync"
 )
 
-// TODO: Process cleanup func is not accessible.
-//
-// TODO: Return cleanup func separately to make it clear
-//  end user needs to call it?
-
 func StartOrExit(cmd *exec.Cmd) *Process {
 	p, err := Start(cmd)
 	if err != nil {
@@ -115,6 +110,10 @@ type Process struct {
 	rwMu   *sync.RWMutex
 	exited exitInfo
 	logger *log.Logger
+}
+
+func (o Process) Cleanup() error {
+	return o.done()
 }
 
 func (o Process) HasExited() bool {
