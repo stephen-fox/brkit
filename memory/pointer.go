@@ -99,51 +99,62 @@ func (o PointerMaker) HexBytesOrExit(hexBytes []byte, sourceEndianness binary.By
 func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	hexBytesNoPrefix := bytes.TrimPrefix(hexBytes, []byte("0x"))
 
-	hexStrLen := len(hexBytesNoPrefix)
-	if hexStrLen == 0 {
-		return Pointer{}, fmt.Errorf("hex string cannot be zero-length")
-	}
-
-	maxLen := o.ptrSize * 2
-	if hexStrLen > maxLen {
-		return Pointer{}, fmt.Errorf("hex string cannot be longer than %d chars - it is %d chars long",
-			maxLen, hexStrLen)
-	}
-
-	leadingZeros := maxLen - hexStrLen
-	if leadingZeros > 0 {
-		zeros := bytes.Repeat([]byte("0"), leadingZeros)
-		if sourceEndianness.String() == binary.LittleEndian.String() {
-			hexBytesNoPrefix = append(hexBytesNoPrefix, zeros...)
-		} else {
-			hexBytesNoPrefix = append(zeros, hexBytesNoPrefix...)
-		}
-	}
-
-	decoded := make([]byte, o.ptrSize)
+	decoded := make([]byte, hex.DecodedLen(len(hexBytesNoPrefix)))
 	_, err := hex.Decode(decoded, hexBytesNoPrefix)
 	if err != nil {
 		return Pointer{}, fmt.Errorf("failed to hex decode data - %w", err)
 	}
 
+	return o.RawBytes(decoded, sourceEndianness)
+}
+
+func (o PointerMaker) RawBytesOrExit(raw []byte, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.RawBytes(raw, sourceEndianness)
+	if err != nil {
+		defaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
+	}
+	return p
+}
+
+func (o PointerMaker) RawBytes(raw []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
+	rawLen := len(raw)
+	if rawLen == 0 {
+		return Pointer{}, fmt.Errorf("pointer bytes slice cannot be zero-length")
+	}
+
+	if rawLen > o.ptrSize {
+		return Pointer{}, fmt.Errorf("slice cannot be longer than pointer size of %d - it is %d bytes long",
+			o.ptrSize, rawLen)
+	}
+
+	leadingZeros := o.ptrSize - rawLen
+	if leadingZeros > 0 {
+		zeros := bytes.Repeat([]byte{0x00}, leadingZeros)
+		if sourceEndianness.String() == binary.LittleEndian.String() {
+			raw = append(raw, zeros...)
+		} else {
+			raw = append(zeros, raw...)
+		}
+	}
+
 	var canonicalBytes []byte
 	if sourceEndianness.String() == o.byteOrder.String() {
-		canonicalBytes = decoded
+		canonicalBytes = raw
 	} else {
 		canonicalBytes = make([]byte, o.ptrSize)
 		for i := 0; i < o.ptrSize; i++ {
-			canonicalBytes[o.ptrSize-1-i] = decoded[i]
+			canonicalBytes[o.ptrSize-1-i] = raw[i]
 		}
 	}
 
 	var address uint
 	switch o.ptrSize {
 	case 2:
-		address = uint(o.byteOrder.Uint16(canonicalBytes))
+		address = uint(sourceEndianness.Uint16(raw))
 	case 4:
-		address = uint(o.byteOrder.Uint32(canonicalBytes))
+		address = uint(sourceEndianness.Uint32(raw))
 	case 8:
-		address = uint(o.byteOrder.Uint64(canonicalBytes))
+		address = uint(sourceEndianness.Uint64(raw))
 	default:
 		return Pointer{}, fmt.Errorf("unsupported pointer size: %d", o.ptrSize)
 	}
