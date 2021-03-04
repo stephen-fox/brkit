@@ -233,12 +233,20 @@ func (o *Process) Interactive() error {
 
 	go func() {
 		_, err := io.Copy(os.Stdout, o.output)
-		done <- fmt.Errorf("failed to copy output reader to stdout - %w", err)
+		if err != nil {
+			done <- fmt.Errorf("failed to copy output reader to stdout - %w", err)
+		} else {
+			done <- nil
+		}
 	}()
 
 	go func() {
 		_, err := io.Copy(o.input, os.Stdin)
-		done <- fmt.Errorf("failed to copy stdin to input writer - %w", err)
+		if err != nil {
+			done <- fmt.Errorf("failed to copy stdin to input writer - %w", err)
+		} else {
+			done <- nil
+		}
 	}()
 
 	return <-done
