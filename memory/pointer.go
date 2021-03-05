@@ -57,7 +57,7 @@ type PointerMaker struct {
 	ptrSize   int
 }
 
-func (o PointerMaker) Uint(address uint) Pointer {
+func (o PointerMaker) FromUint(address uint) Pointer {
 	out := make([]byte, o.ptrSize)
 	switch o.bits {
 	case 16:
@@ -76,27 +76,27 @@ func (o PointerMaker) Uint(address uint) Pointer {
 	}
 }
 
-func (o PointerMaker) HexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
-	p, err := o.HexString(hexStr, sourceEndianness)
+func (o PointerMaker) FromHexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.FromHexString(hexStr, sourceEndianness)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
 	}
 	return p
 }
 
-func (o PointerMaker) HexString(hexStr string, sourceEndianness binary.ByteOrder) (Pointer, error) {
-	return o.HexBytes([]byte(hexStr), sourceEndianness)
+func (o PointerMaker) FromHexString(hexStr string, sourceEndianness binary.ByteOrder) (Pointer, error) {
+	return o.FromHexBytes([]byte(hexStr), sourceEndianness)
 }
 
-func (o PointerMaker) HexBytesOrExit(hexBytes []byte, sourceEndianness binary.ByteOrder) Pointer {
-	p, err := o.HexBytes(hexBytes, sourceEndianness)
+func (o PointerMaker) FromHexBytesOrExit(hexBytes []byte, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.FromHexBytes(hexBytes, sourceEndianness)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
 	}
 	return p
 }
 
-func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
+func (o PointerMaker) FromHexBytes(hexBytes []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	hexBytesNoPrefix := bytes.TrimPrefix(hexBytes, []byte("0x"))
 
 	decoded := make([]byte, hex.DecodedLen(len(hexBytesNoPrefix)))
@@ -105,18 +105,18 @@ func (o PointerMaker) HexBytes(hexBytes []byte, sourceEndianness binary.ByteOrde
 		return Pointer{}, fmt.Errorf("failed to hex decode data - %w", err)
 	}
 
-	return o.RawBytes(decoded, sourceEndianness)
+	return o.FromRawBytes(decoded, sourceEndianness)
 }
 
-func (o PointerMaker) RawBytesOrExit(raw []byte, sourceEndianness binary.ByteOrder) Pointer {
-	p, err := o.RawBytes(raw, sourceEndianness)
+func (o PointerMaker) FromRawBytesOrExit(raw []byte, sourceEndianness binary.ByteOrder) Pointer {
+	p, err := o.FromRawBytes(raw, sourceEndianness)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
 	}
 	return p
 }
 
-func (o PointerMaker) RawBytes(raw []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
+func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	rawLen := len(raw)
 	if rawLen == 0 {
 		return Pointer{}, fmt.Errorf("pointer bytes slice cannot be zero-length")
