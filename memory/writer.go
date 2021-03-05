@@ -56,16 +56,16 @@ type DPAFormatStringWriter struct {
 	leakConfig *dpaLeakConfig
 }
 
-func (o DPAFormatStringWriter) OverwriteLower32BitsAtOrExit(newLower32Bits int, pointer Pointer) {
-	err := o.OverwriteLower32BitsAt(newLower32Bits, pointer)
+func (o DPAFormatStringWriter) WriteLower4BytesAtOrExit(newLowerBytes int, pointer Pointer) {
+	err := o.WriteLower4BytesAt(newLowerBytes, pointer)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
-			newLower32Bits, pointer.HexString(), err))
+			newLowerBytes, pointer.HexString(), err))
 	}
 }
 
-func (o DPAFormatStringWriter) OverwriteLower32BitsAt(newLower32Bits int, pointer Pointer) error {
-	str, err := o.Lower32BitsFormatString(newLower32Bits)
+func (o DPAFormatStringWriter) WriteLower4BytesAt(newLowerBytes int, pointer Pointer) error {
+	str, err := o.Lower4BytesFormatString(newLowerBytes)
 	if err != nil {
 		return err
 	}
@@ -77,8 +77,8 @@ func (o DPAFormatStringWriter) OverwriteLower32BitsAt(newLower32Bits int, pointe
 	return err
 }
 
-func (o DPAFormatStringWriter) Lower32BitsFormatString(numToWrite int) ([]byte, error) {
-	adjustedNum, err := o.adjustNumToWrite(numToWrite)
+func (o DPAFormatStringWriter) Lower4BytesFormatString(newLowerBytes int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(newLowerBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -88,16 +88,16 @@ func (o DPAFormatStringWriter) Lower32BitsFormatString(numToWrite int) ([]byte, 
 	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
 }
 
-func (o DPAFormatStringWriter) OverwriteLower16BitsAtOrExit(newLower16Bits int, pointer Pointer) {
-	err := o.OverwriteLower16BitsAt(newLower16Bits, pointer)
+func (o DPAFormatStringWriter) WriteLower2BytesAtOrExit(newLowerBytes int, pointer Pointer) {
+	err := o.WriteLower2BytesAt(newLowerBytes, pointer)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
-			newLower16Bits, pointer.HexString(), err))
+			newLowerBytes, pointer.HexString(), err))
 	}
 }
 
-func (o DPAFormatStringWriter) OverwriteLower16BitsAt(newLower16Bits int, pointer Pointer) error {
-	str, err := o.Lower16BitsFormatString(newLower16Bits)
+func (o DPAFormatStringWriter) WriteLower2BytesAt(newLowerBytes int, pointer Pointer) error {
+	str, err := o.Lower2BytesFormatString(newLowerBytes)
 	if err != nil {
 		return err
 	}
@@ -109,8 +109,8 @@ func (o DPAFormatStringWriter) OverwriteLower16BitsAt(newLower16Bits int, pointe
 	return err
 }
 
-func (o DPAFormatStringWriter) Lower16BitsFormatString(newLower16Bits int) ([]byte, error) {
-	adjustedNum, err := o.adjustNumToWrite(newLower16Bits)
+func (o DPAFormatStringWriter) Lower2BytesFormatString(newLowerBytes int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(newLowerBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -120,16 +120,16 @@ func (o DPAFormatStringWriter) Lower16BitsFormatString(newLower16Bits int) ([]by
 	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
 }
 
-func (o DPAFormatStringWriter) OverwriteLower8BitsAtOrExit(newLower8Bits int, pointer Pointer) {
-	err := o.OverwriteLower8BitsAt(newLower8Bits, pointer)
+func (o DPAFormatStringWriter) WriteLowestByteAtOrExit(newLowerByte int, pointer Pointer) {
+	err := o.WriteLowestByteAt(newLowerByte, pointer)
 	if err != nil {
 		defaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
-			newLower8Bits, pointer.HexString(), err))
+			newLowerByte, pointer.HexString(), err))
 	}
 }
 
-func (o DPAFormatStringWriter) OverwriteLower8BitsAt(newLower8Bits int, pointer Pointer) error {
-	str, err := o.Lower8BitsFormatString(newLower8Bits)
+func (o DPAFormatStringWriter) WriteLowestByteAt(newLowerByte int, pointer Pointer) error {
+	str, err := o.LowestByteFormatString(newLowerByte)
 	if err != nil {
 		return err
 	}
@@ -141,8 +141,8 @@ func (o DPAFormatStringWriter) OverwriteLower8BitsAt(newLower8Bits int, pointer 
 	return err
 }
 
-func (o DPAFormatStringWriter) Lower8BitsFormatString(newLower8Bits int) ([]byte, error) {
-	adjustedNum, err := o.adjustNumToWrite(newLower8Bits)
+func (o DPAFormatStringWriter) LowestByteFormatString(newLowerByte int) ([]byte, error) {
+	adjustedNum, err := o.adjustNumToWrite(newLowerByte)
 	if err != nil {
 		return nil, err
 	}

