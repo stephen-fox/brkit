@@ -138,10 +138,6 @@ type FormatStringLeaker struct {
 	procIOFn  func() ProcessIO
 }
 
-func (o FormatStringLeaker) FormatString() []byte {
-	return o.formatStr
-}
-
 func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 	p, err := o.MemoryAt(pointer)
 	if err != nil {
@@ -151,7 +147,11 @@ func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 }
 
 func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
-	return leakDataWithFormatString(o.procIOFn(), append(o.formatStr, pointer.Bytes()...), o.builder)
+	return leakDataWithFormatString(o.procIOFn(), o.FormatString(pointer), o.builder)
+}
+
+func (o FormatStringLeaker) FormatString(pointer Pointer) []byte {
+	return append(o.formatStr, pointer.Bytes()...)
 }
 
 func NewDPAFormatStringLeakerOrExit(config DPAFormatStringConfig) *DPAFormatStringLeaker {

@@ -60,7 +60,7 @@ func leakParams(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string is '%s'", leaker.FormatString(1))
+		verbose.Printf("format string example: '%s'", leaker.FormatString(1))
 	}
 
 	log.Printf("press enter when ready")
@@ -93,7 +93,7 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string is '%s'", leaker.FormatString(1))
+		verbose.Printf("format string exmple: '%s'", leaker.FormatString(1))
 	}
 
 	for {
@@ -123,11 +123,12 @@ func leakMemoryAtLoop(proc *process.Process) {
 		Verbose:      verbose,
 	})
 
-	if verbose != nil {
-		verbose.Printf("format string is '%s'", leaker.FormatString())
-	}
-
 	pm := memory.PointerMakerForX68_64()
+
+	if verbose != nil {
+		verbose.Printf("format string example: '%s'",
+			leaker.FormatString(pm.FromUint(4141414141414141)))
+	}
 
 	for {
 		log.Printf("please enter a memory address to read from followed by 'enter':\n")
