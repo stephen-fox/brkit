@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/stephen-fox/brkit/memory"
-	"github.com/stephen-fox/brkit/process"
+	"gitlab.com/stephen-fox/brkit/memory"
+	"gitlab.com/stephen-fox/brkit/process"
 )
 
 var (

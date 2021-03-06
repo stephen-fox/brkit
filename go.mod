@@ -1,3 +1,3 @@
-module github.com/stephen-fox/brkit
+module gitlab.com/stephen-fox/brkit
 
 go 1.13
