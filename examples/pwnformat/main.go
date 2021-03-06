@@ -193,7 +193,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		log.Printf("parsed pointer as '%s' (0x%x)", pointer.HexString(), pointer)
+		log.Printf("parsed pointer as '%s' (0x%x)", pointer.HexString(), pointer.Bytes())
 
 		num, convErr := strconv.Atoi(parts[1])
 		if convErr != nil {
