@@ -40,7 +40,7 @@ func main() {
 		proc = process.DialOrExit("tcp", flag.Arg(0))
 	} else {
 		cmd := exec.Command(flag.Arg(0))
-		proc = process.StartOrExit(cmd)
+		proc = process.ExecOrExit(cmd)
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
 	proc.SetLogger(muyVerbose)
