@@ -26,7 +26,7 @@ func PointerMakerForX68_64() PointerMaker {
 func PointerMakerForOrExit(endianness binary.ByteOrder, bits int, pointerSize int) PointerMaker {
 	pm, err := PointerMakerFor(endianness, bits, pointerSize)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create pointer maker - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to create pointer maker - %w", err))
 	}
 	return pm
 }
@@ -79,7 +79,7 @@ func (o PointerMaker) FromUint(address uint) Pointer {
 func (o PointerMaker) FromHexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromHexString(hexStr, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
 	}
 	return p
 }
@@ -91,7 +91,7 @@ func (o PointerMaker) FromHexString(hexStr string, sourceEndianness binary.ByteO
 func (o PointerMaker) FromHexBytesOrExit(hexBytes []byte, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromHexBytes(hexBytes, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
 	}
 	return p
 }
@@ -111,7 +111,7 @@ func (o PointerMaker) FromHexBytes(hexBytes []byte, sourceEndianness binary.Byte
 func (o PointerMaker) FromRawBytesOrExit(raw []byte, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromRawBytes(raw, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
 	}
 	return p
 }

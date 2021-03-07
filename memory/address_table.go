@@ -86,17 +86,17 @@ func (o *AddressTable) CurrentContext() string {
 // AddressOrExit returns the address of the specified symbol for the
 // currently selected context.
 //
-// If the context or the symbol do not exist, then defaultExitFn is invoked.
+// If the context or the symbol do not exist, then DefaultExitFn is invoked.
 func (o *AddressTable) AddressOrExit(symbolName string) uint {
 	symbolsToAddrs, hasIt := o.contextToSymbolsToAddrs[o.currentContext]
 	if !hasIt {
-		defaultExitFn(fmt.Errorf("the current context ('%s') is not in the lookup table",
+		DefaultExitFn(fmt.Errorf("the current context ('%s') is not in the lookup table",
 			o.currentContext))
 	}
 
 	addr, hasIt := symbolsToAddrs[symbolName]
 	if !hasIt {
-		defaultExitFn(fmt.Errorf("failed to find the symbol '%s' in the table for '%s'",
+		DefaultExitFn(fmt.Errorf("failed to find the symbol '%s' in the table for '%s'",
 			symbolName, o.currentContext))
 	}
 
