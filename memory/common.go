@@ -12,6 +12,10 @@ type ProcessIO interface {
 	// process' output until the specified []byte is found,
 	// returning the data read, including the specified []byte.
 	ReadUntil(p []byte) ([]byte, error)
+
+	// PointerSizeBytes returns the size of a pointer in bytes
+	// for the process' platform.
+	PointerSizeBytes() int
 }
 
 var (

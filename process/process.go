@@ -18,8 +18,8 @@ import (
 // more information.
 //
 // Any underlying errors result in a call to DefaultExitFn.
-func ExecOrExit(cmd *exec.Cmd) *Process {
-	p, err := Exec(cmd)
+func ExecOrExit(cmd *exec.Cmd, info Info) *Process {
+	p, err := Exec(cmd, info)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to start process - %w", err))
 	}
@@ -31,7 +31,7 @@ func ExecOrExit(cmd *exec.Cmd) *Process {
 //
 // Callers are expected to call Process.Cleanup when the Process has exited,
 // or is no longer needed.
-func Exec(cmd *exec.Cmd) (*Process, error) {
+func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stdin pipe - %w", err)
@@ -53,6 +53,7 @@ func Exec(cmd *exec.Cmd) (*Process, error) {
 		input:  stdin,
 		output: bufio.NewReader(stdout),
 		rwMu:   &sync.RWMutex{},
+		info:   info,
 	}
 
 	waitDone := make(chan struct{})
@@ -90,8 +91,8 @@ type exitInfo struct {
 // network type and address. Refer to Dial for more information.
 //
 // Any underlying errors result in a call to DefaultExitFn.
-func DialOrExit(network string, address string) *Process {
-	p, err := Dial(network, address)
+func DialOrExit(network string, address string, info Info) *Process {
+	p, err := Dial(network, address, info)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to dial program - %w", err))
 	}
@@ -105,26 +106,49 @@ func DialOrExit(network string, address string) *Process {
 //
 // Callers should call Process.Cleanup when the process has exited,
 // or a connection to the process is no longer required.
-func Dial(network string, address string) (*Process, error) {
+func Dial(network string, address string, info Info) (*Process, error) {
 	c, err := net.Dial(network, address)
 	if err != nil {
 		return nil, err
 	}
 
-	return FromNetConn(c), nil
+	return FromNetConn(c, info), nil
 }
 
 // FromNetConn upgrade an existing network connection to a process
 // (a net.Conn), returning a *Process.
-func FromNetConn(c net.Conn) *Process {
+func FromNetConn(c net.Conn, info Info) *Process {
 	return &Process{
 		input:  c,
 		output: bufio.NewReader(c),
 		rwMu:   &sync.RWMutex{},
-		done: func() error {
+		info:   info,
+		done:   func() error {
 			return c.Close()
 		},
 	}
+}
+
+// X86_32Info creates a new Info for a X86 32-bit process.
+func X86_32Info() Info {
+	return Info{
+		PlatformBits: 32,
+		PtrSizeBytes: 4,
+	}
+}
+
+// X86_64Info creates a new Info for a X86 64-bit process.
+func X86_64Info() Info {
+	return Info{
+		PlatformBits: 64,
+		PtrSizeBytes: 8,
+	}
+}
+
+// Info specifies platform information about the process.
+type Info struct {
+	PlatformBits int
+	PtrSizeBytes int
 }
 
 // Process represents a running software process. The process can be
@@ -141,17 +165,29 @@ type Process struct {
 	done   func() error
 	rwMu   *sync.RWMutex
 	exited exitInfo
+	info   Info
 	logger *log.Logger
 }
 
 // Cleanup, generally speaking, releases any resources associated with
 // the underlying software process and kills the process if it has not
-// already exited. For a remote process, the underlying connection
-// is closed.
+// already exited. For a networked process, the underlying connection
+// will be closed.
 //
-// The Process is no longer usable once this method is invoked,
+// The Process is no longer usable once this method is invoked.
 func (o Process) Cleanup() error {
 	return o.done()
+}
+
+// Bits returns the number of bits for the process' platform.
+func (o Process) Bits() int {
+	return o.info.PlatformBits
+}
+
+// PointerSizeBytes returns the size of a pointer for the
+// process' platform in bytes.
+func (o Process) PointerSizeBytes() int {
+	return o.info.PtrSizeBytes
 }
 
 // HasExited returns true if the underlying process has exited.

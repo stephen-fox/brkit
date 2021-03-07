@@ -58,7 +58,7 @@ func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStr
 				config.DPAConfig.MaxNumParams,
 				[]byte("aaa"), // This could potentially be 'hhn'.
 				buff)
-			return fmtStrBuilder, stringLenMemoryAligned(buff.Bytes(), config.DPAConfig.PointerSize)
+			return fmtStrBuilder, stringLenMemoryAligned(buff.Bytes(), config.DPAConfig.ProcessIO.PointerSizeBytes())
 		},
 	})
 	if err != nil {
@@ -108,7 +108,7 @@ func (o DPAFormatStringWriter) WriteLowerFourBytesAt(newLowerBytes int, pointer 
 	}
 
 	_, err = leakDataWithFormatString(
-		o.config.DPAConfig.ProcessIOFn(),
+		o.config.DPAConfig.ProcessIO,
 		fmtStr,
 		o.leakConfig.builder)
 	return err
@@ -149,7 +149,7 @@ func (o DPAFormatStringWriter) WriteLowerTwoBytesAt(newLowerBytes int, pointer P
 	}
 
 	_, err = leakDataWithFormatString(
-		o.config.DPAConfig.ProcessIOFn(),
+		o.config.DPAConfig.ProcessIO,
 		fmtStr,
 		o.leakConfig.builder)
 	return err
@@ -190,7 +190,7 @@ func (o DPAFormatStringWriter) WriteLowestByteAt(newLowerByte int, pointer Point
 	}
 
 	_, err = leakDataWithFormatString(
-		o.config.DPAConfig.ProcessIOFn(),
+		o.config.DPAConfig.ProcessIO,
 		fmtStr,
 		o.leakConfig.builder)
 	return err
