@@ -227,7 +227,8 @@ func (o Process) ReadUntilOrExit(p []byte) []byte {
 }
 
 // ReadUntil blocks and attempts to read from the process' output until the
-// specified []byte is found.
+// specified []byte is found, returning the data read, including the
+// specified []byte.
 func (o Process) ReadUntil(p []byte) ([]byte, error) {
 	if o.logger != nil {
 		o.logger.Printf("ReadUntil: 0x%x", p)
@@ -244,6 +245,7 @@ func (o Process) ReadUntil(p []byte) ([]byte, error) {
 		if o.logger != nil {
 			o.logger.Printf("ReadUntil buff is now: %s", buff.Bytes())
 		}
+		// TODO: Maybe search by suffix?
 		if bytes.Contains(buff.Bytes(), p) {
 			if o.logger != nil {
 				o.logger.Printf("ReadUntil buff contains target")
