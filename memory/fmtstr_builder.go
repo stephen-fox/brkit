@@ -78,8 +78,8 @@ func (o formatStringBuilder) appendSuffix(buff *bytes.Buffer) {
 }
 
 // build constructs a format string from the specified *bytes.Buffer,
-// aligning it to specified length so that it aligns with the size
-// of a pointer on the target system
+// padding it to specified length so that it aligns with the size
+// of a pointer on the target system.
 func (o formatStringBuilder) build(memAlignmentLen int, unalignedFmtStr *bytes.Buffer) []byte {
 	return appendStringWithCharUntilLen(unalignedFmtStr.Bytes(), 'A', memAlignmentLen)
 }

@@ -25,7 +25,7 @@ type DPAFormatStringWriterConfig struct {
 }
 
 // NewDPAFormatStringWriterOrExit calls NewDPAFormatStringWriter, subsequently
-// callings DefaultExitFn if an error occurs.
+// calling DefaultExitFn if an error occurs.
 func NewDPAFormatStringWriterOrExit(config DPAFormatStringWriterConfig) *DPAFormatStringWriter {
 	w, err := NewDPAFormatStringWriter(config)
 	if err != nil {
@@ -69,8 +69,8 @@ func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStr
 	}, nil
 }
 
-// DPAFormatStringWriter abstracts writing data to a pointer in memory
-// using a format string.
+// DPAFormatStringWriter abstracts writing data to memory using
+// a format string.
 //
 // Writing memory is accomplished by forcing the format function to write
 // new characters to a string, and then writing the number of characters
@@ -85,33 +85,34 @@ type DPAFormatStringWriter struct {
 	leakConfig *dpaLeakConfig
 }
 
-// WriteLower4BytesAtOrExit calls WriteLower4BytesAt, subsequently calling
-// DefaultExitFn if an error occurs.
-func (o DPAFormatStringWriter) WriteLower4BytesAtOrExit(newLowerBytes int, pointer Pointer) {
-	err := o.WriteLower4BytesAt(newLowerBytes, pointer)
+// WriteLowerFourBytesAtOrExit calls WriteLowerFourBytesAt, subsequently
+// calling DefaultExitFn if an error occurs.
+func (o DPAFormatStringWriter) WriteLowerFourBytesAtOrExit(newLowerBytes int, pointer Pointer) {
+	err := o.WriteLowerFourBytesAt(newLowerBytes, pointer)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
 			newLowerBytes, pointer.HexString(), err))
 	}
 }
 
-// WriteLower4BytesAt attempts to overwrite the lower four bytes with a number
-// at the specified pointer.
-func (o DPAFormatStringWriter) WriteLower4BytesAt(newLowerBytes int, pointer Pointer) error {
-	str, err := o.Lower4BytesFormatString(newLowerBytes)
+// WriteLowerFourBytesAt attempts to overwrite the lower four bytes of memory
+// pointed to by pointer with a new number.
+func (o DPAFormatStringWriter) WriteLowerFourBytesAt(newLowerBytes int, pointer Pointer) error {
+	fmtStr, err := o.LowerFourBytesFormatString(newLowerBytes, pointer)
 	if err != nil {
 		return err
 	}
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer.Bytes()...),
+		fmtStr,
 		o.leakConfig.builder)
 	return err
 }
 
-// TODO: Pass Pointer to this?
-func (o DPAFormatStringWriter) Lower4BytesFormatString(newLowerBytes int) ([]byte, error) {
+// LowerFourBytesFormatString creates a new format string that can be used to
+// overwrite the lower four bytes at the memory pointed to by pointer.
+func (o DPAFormatStringWriter) LowerFourBytesFormatString(newLowerBytes int, pointer Pointer) ([]byte, error) {
 	adjustedNum, err := o.adjustNumToWrite(newLowerBytes)
 	if err != nil {
 		return nil, err
@@ -119,38 +120,38 @@ func (o DPAFormatStringWriter) Lower4BytesFormatString(newLowerBytes int) ([]byt
 
 	buff := bytes.NewBuffer(nil)
 	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'n'}, buff)
-	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+
+	return append(o.leakConfig.builder.build(o.leakConfig.alignLen, buff), pointer.Bytes()...), nil
 }
 
-// WriteLower2BytesAtOrExit calls WriteLower2BytesAt, subsequently calling
+// WriteLowerTwoBytesAtOrExit calls WriteLowerTwoBytesAt, subsequently calling
 // DefaultExitFn if an error occurs.
-func (o DPAFormatStringWriter) WriteLower2BytesAtOrExit(newLowerBytes int, pointer Pointer) {
-	err := o.WriteLower2BytesAt(newLowerBytes, pointer)
+func (o DPAFormatStringWriter) WriteLowerTwoBytesAtOrExit(newLowerBytes int, pointer Pointer) {
+	err := o.WriteLowerTwoBytesAt(newLowerBytes, pointer)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to write %d to %s - %w",
 			newLowerBytes, pointer.HexString(), err))
 	}
 }
 
-// WriteLower2BytesAt attempts to overwrite the lower two bytes with a number
-// at the specified pointer.
-func (o DPAFormatStringWriter) WriteLower2BytesAt(newLowerBytes int, pointer Pointer) error {
-	str, err := o.Lower2BytesFormatString(newLowerBytes)
+// WriteLowerTwoBytesAt attempts to overwrite the lower two bytes of memory
+// pointed to by pointer with a new value.
+func (o DPAFormatStringWriter) WriteLowerTwoBytesAt(newLowerBytes int, pointer Pointer) error {
+	fmtStr, err := o.LowerTwoBytesFormatString(newLowerBytes, pointer)
 	if err != nil {
 		return err
 	}
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer.Bytes()...),
+		fmtStr,
 		o.leakConfig.builder)
 	return err
 }
 
-// Lower2BytesFormatString creates a new format string that can be used to
-// overwrite the lower two bytes.
-// TODO: Pass Pointer to this?
-func (o DPAFormatStringWriter) Lower2BytesFormatString(newLowerBytes int) ([]byte, error) {
+// LowerTwoBytesFormatString creates a new format string that can be used to
+// overwrite the lower two bytes at the memory pointed to by pointer.
+func (o DPAFormatStringWriter) LowerTwoBytesFormatString(newLowerBytes int, pointer Pointer) ([]byte, error) {
 	adjustedNum, err := o.adjustNumToWrite(newLowerBytes)
 	if err != nil {
 		return nil, err
@@ -158,7 +159,8 @@ func (o DPAFormatStringWriter) Lower2BytesFormatString(newLowerBytes int) ([]byt
 
 	buff := bytes.NewBuffer(nil)
 	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'h', 'n'}, buff)
-	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+
+	return append(o.leakConfig.builder.build(o.leakConfig.alignLen, buff), pointer.Bytes()...), nil
 }
 
 // WriteLowestByteAtOrExit calls WriteLowestByteAt, subsequently calling
@@ -171,23 +173,24 @@ func (o DPAFormatStringWriter) WriteLowestByteAtOrExit(newLowerByte int, pointer
 	}
 }
 
-// WriteLowestByteAt attempts to overwrite the lowest byte with a number
-// at the specified pointer.
+// WriteLowestByteAt attempts to overwrite the lowest byte of memory pointed
+// to by pointer with a new number.
 func (o DPAFormatStringWriter) WriteLowestByteAt(newLowerByte int, pointer Pointer) error {
-	str, err := o.LowestByteFormatString(newLowerByte)
+	fmtStr, err := o.LowestByteFormatString(newLowerByte, pointer)
 	if err != nil {
 		return err
 	}
 
 	_, err = leakDataWithFormatString(
 		o.config.DPAConfig.ProcessIOFn(),
-		append(str, pointer.Bytes()...),
+		fmtStr,
 		o.leakConfig.builder)
 	return err
 }
 
-// TODO: Pass Pointer to this?
-func (o DPAFormatStringWriter) LowestByteFormatString(newLowerByte int) ([]byte, error) {
+// LowestByteFormatString creates a new format string that can be used to
+// overwrite the lowest byte at the memory pointed to by pointer.
+func (o DPAFormatStringWriter) LowestByteFormatString(newLowerByte int, pointer Pointer) ([]byte, error) {
 	adjustedNum, err := o.adjustNumToWrite(newLowerByte)
 	if err != nil {
 		return nil, err
@@ -195,9 +198,13 @@ func (o DPAFormatStringWriter) LowestByteFormatString(newLowerByte int) ([]byte,
 
 	buff := bytes.NewBuffer(nil)
 	o.leakConfig.builder.appendDPAWrite(adjustedNum, o.leakConfig.paramNum, []byte{'h', 'h', 'n'}, buff)
-	return o.leakConfig.builder.build(o.leakConfig.alignLen, buff), nil
+
+	return append(o.leakConfig.builder.build(o.leakConfig.alignLen, buff), pointer.Bytes()...), nil
 }
 
+// adjustNumToWrite checks that the new value to write fits in
+// the configuration, and adjusts it based on how many characters
+// will have been written by the format function.
 func (o DPAFormatStringWriter) adjustNumToWrite(newValue int) (int, error) {
 	if newValue <= 0 {
 		return 0, fmt.Errorf("the specified write size of %d cannot be less than or equal to 0", newValue)

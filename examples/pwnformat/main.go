@@ -164,15 +164,15 @@ func writeMemoryLoop(proc *process.Process) {
 		},
 	})
 
+	pm := memory.PointerMakerForX68_64()
+
 	if verbose != nil {
-		str, err := writer.Lower4BytesFormatString(10)
+		str, err := writer.LowerFourBytesFormatString(10, pm.FromUint(0x4141414141414141))
 		if err != nil {
 			log.Fatalf("failed to get format string for verbose log - %s", err)
 		}
 		verbose.Printf("format string is 0x%x", str)
 	}
-
-	pm := memory.PointerMakerForX68_64()
 
 	for {
 		log.Printf("please enter a memory address to write to and a number followed by 'enter':")
@@ -201,7 +201,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		writer.WriteLower4BytesAtOrExit(num, pointer)
+		writer.WriteLowerFourBytesAtOrExit(num, pointer)
 
 		log.Printf("wrote %d to %s", num, pointer.HexString())
 	}
