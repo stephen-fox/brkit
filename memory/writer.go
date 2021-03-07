@@ -26,6 +26,8 @@ type DPAFormatStringWriterConfig struct {
 
 // NewDPAFormatStringWriterOrExit calls NewDPAFormatStringWriter, subsequently
 // calling DefaultExitFn if an error occurs.
+//
+// Refer to NewDPAFormatStringWriter for more information.
 func NewDPAFormatStringWriterOrExit(config DPAFormatStringWriterConfig) *DPAFormatStringWriter {
 	w, err := NewDPAFormatStringWriter(config)
 	if err != nil {
@@ -87,6 +89,8 @@ type DPAFormatStringWriter struct {
 
 // WriteLowerFourBytesAtOrExit calls WriteLowerFourBytesAt, subsequently
 // calling DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringWriter.WriteLowerFourBytesAt for more information.
 func (o DPAFormatStringWriter) WriteLowerFourBytesAtOrExit(newLowerBytes int, pointer Pointer) {
 	err := o.WriteLowerFourBytesAt(newLowerBytes, pointer)
 	if err != nil {
@@ -126,6 +130,8 @@ func (o DPAFormatStringWriter) LowerFourBytesFormatString(newLowerBytes int, poi
 
 // WriteLowerTwoBytesAtOrExit calls WriteLowerTwoBytesAt, subsequently calling
 // DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringWriter.WriteLowerTwoBytesAt for more information.
 func (o DPAFormatStringWriter) WriteLowerTwoBytesAtOrExit(newLowerBytes int, pointer Pointer) {
 	err := o.WriteLowerTwoBytesAt(newLowerBytes, pointer)
 	if err != nil {
@@ -165,6 +171,8 @@ func (o DPAFormatStringWriter) LowerTwoBytesFormatString(newLowerBytes int, poin
 
 // WriteLowestByteAtOrExit calls WriteLowestByteAt, subsequently calling
 // DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringWriter.WriteLowestByteAt for more information.
 func (o DPAFormatStringWriter) WriteLowestByteAtOrExit(newLowerByte int, pointer Pointer) {
 	err := o.WriteLowestByteAt(newLowerByte, pointer)
 	if err != nil {

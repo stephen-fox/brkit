@@ -57,6 +57,8 @@ func (o DPAFormatStringConfig) validate() error {
 
 // SetupFormatStringLeakViaDPAOrExit calls SetupFormatStringLeakViaDPA,
 // subsequently invoking DefaultExitFn if an error occurs.
+//
+// Refer to SetupFormatStringLeakViaDPA for more information.
 func SetupFormatStringLeakViaDPAOrExit(config DPAFormatStringConfig) *FormatStringLeaker {
 	f, err := SetupFormatStringLeakViaDPA(config)
 	if err != nil {
@@ -196,6 +198,8 @@ type FormatStringLeaker struct {
 
 // MemoryAtOrExit calls FormatStringLeaker.MemoryAt, subsequently calling
 // DefaultExitFn if an error occurs.
+//
+// Refer to FormatStringLeaker.MemoryAt for more information.
 func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 	p, err := o.MemoryAt(pointer)
 	if err != nil {
@@ -217,6 +221,8 @@ func (o FormatStringLeaker) FormatString(pointer Pointer) []byte {
 
 // NewDPAFormatStringLeakerOrExit calls NewDPAFormatStringLeaker, subsequently
 // calling DefaultExitFn if an error occurs.
+//
+// Refer to NewDPAFormatStringLeaker for more information.
 func NewDPAFormatStringLeakerOrExit(config DPAFormatStringConfig) *DPAFormatStringLeaker {
 	res, err := NewDPAFormatStringLeaker(config)
 	if err != nil {
@@ -265,8 +271,10 @@ type DPAFormatStringLeaker struct {
 	alignedLen int
 }
 
-// FindParamNumberOrExit calls FindParamNumber, subsequently calling
-// DefaultExitFn if an error occurs.
+// FindParamNumberOrExit calls DPAFormatStringLeaker.FindParamNumber,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringLeaker.FindParamNumber for more information.
 func (o DPAFormatStringLeaker) FindParamNumberOrExit(target []byte) (int, bool) {
 	i, b, err := o.FindParamNumber(target)
 	if err != nil {
@@ -305,8 +313,10 @@ func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error)
 	return 0, false, nil
 }
 
-// MemoryAtParamOrExit calls MemoryAtParam, subsequently calling DefaultExitFn
-// if an error occurs.
+// MemoryAtParamOrExit calls DPAFormatStringLeaker.MemoryAtParam,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringLeaker.MemoryAtParam for more information.
 func (o DPAFormatStringLeaker) MemoryAtParamOrExit(paramNumber int) []byte {
 	res, err := o.MemoryAtParam(paramNumber)
 	if err != nil {
@@ -429,7 +439,7 @@ func randomStringOfCharsAndNums(numChars int) ([]byte, error) {
 	rawRandom := make([]byte, 8)
 	_, err := rand.Read(rawRandom)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("crypt/rand.Read() failed - %w", err)
 	}
 
 	src := mathrand.NewSource(int64(binary.BigEndian.Uint64(rawRandom)))
