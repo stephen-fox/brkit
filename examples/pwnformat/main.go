@@ -63,7 +63,7 @@ func leakParams(proc *process.Process) {
 	log.Printf("press enter when ready")
 	fmt.Scanln()
 
-	pm := memory.PointerMakerForX68_64()
+	pm := memory.PointerMakerForX86_64()
 
 	// _IO_2_1_stderr_      - 0x7f7997d8e5c0 - 21
 	// _IO_file_jumps       - 0x7f7997d8f4a0 - 28
@@ -114,7 +114,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 		Verbose:      verbose,
 	})
 
-	pm := memory.PointerMakerForX68_64()
+	pm := memory.PointerMakerForX86_64()
 
 	if verbose != nil {
 		verbose.Printf("format string example: '%s'",
@@ -152,7 +152,7 @@ func writeMemoryLoop(proc *process.Process) {
 		},
 	})
 
-	pm := memory.PointerMakerForX68_64()
+	pm := memory.PointerMakerForX86_64()
 
 	if verbose != nil {
 		str, err := writer.LowerFourBytesFormatString(10, pm.FromUint(0x4141414141414141))

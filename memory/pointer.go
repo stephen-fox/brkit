@@ -7,7 +7,8 @@ import (
 	"fmt"
 )
 
-func PointerMakerForX68_32() PointerMaker {
+// PointerMakerForX86_32 returns a new PointerMaker for a X86 32-bit system.
+func PointerMakerForX86_32() PointerMaker {
 	return PointerMaker{
 		byteOrder: binary.LittleEndian,
 		bits:      32,
@@ -15,7 +16,8 @@ func PointerMakerForX68_32() PointerMaker {
 	}
 }
 
-func PointerMakerForX68_64() PointerMaker {
+// PointerMakerForX86_64 returns a new PointerMaker for a X86 64-bit system.
+func PointerMakerForX86_64() PointerMaker {
 	return PointerMaker{
 		byteOrder: binary.LittleEndian,
 		bits:      64,
