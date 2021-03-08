@@ -20,11 +20,11 @@ type formatStringBuilder struct {
 }
 
 // buildDPA builds a direct parameter access (DPA) format string for the
-// specified parameter number and format specifiers, aligned to the specified
+// specified parameter number and format specifiers, padded to the specified
 // string length.
 //
 // The resulting string is going to look like this:
-//     [format-string-with-loop-index][padding][address]
+//     [format-string][padding][address-or-argument-data]
 //
 // The "padding" is required because of the format
 // string parameter specifier. As it grows, it could

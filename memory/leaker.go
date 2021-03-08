@@ -62,8 +62,8 @@ func SetupFormatStringLeakViaDPAOrExit(config DPAFormatStringConfig) *FormatStri
 
 // SetupFormatStringLeakViaDPA sets up a new FormatStringLeaker by leaking
 // the direct parameter access (DPA) argument number of an oracle in a
-// specially-crafted format string. This oracle is replaced with a memory
-// address when users call the struct's method.
+// specially-crafted format string. The oracle is replaced with the memory
+// address that callers wish to leak. This utilizes the '%s' format specifier.
 func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLeaker, error) {
 	setupConfig := dpaLeakSetupConfig{
 		dpaConfig: config,
@@ -286,7 +286,7 @@ func (o DPAFormatStringLeaker) FindParamNumberOrExit(target []byte) (int, bool) 
 // symbols) that appear in the format function's stack frame.
 func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error) {
 	for i := 0; i < o.config.MaxNumParams; i++ {
-		result, err := o.MemoryAtParam(i)
+		result, err := o.RawPointerAtParam(i)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get memory at direct access param number %d - %w",
 				i, err)
@@ -307,21 +307,22 @@ func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error)
 	return 0, false, nil
 }
 
-// MemoryAtParamOrExit calls DPAFormatStringLeaker.MemoryAtParam,
+// RawPointerAtParamOrExit calls DPAFormatStringLeaker.RawPointerAtParam,
 // subsequently calling DefaultExitFn if an error occurs.
 //
-// Refer to DPAFormatStringLeaker.MemoryAtParam for more information.
-func (o DPAFormatStringLeaker) MemoryAtParamOrExit(paramNumber int) []byte {
-	res, err := o.MemoryAtParam(paramNumber)
+// Refer to DPAFormatStringLeaker.RawPointerAtParam for more information.
+func (o DPAFormatStringLeaker) RawPointerAtParamOrExit(paramNumber int) []byte {
+	res, err := o.RawPointerAtParam(paramNumber)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to get memory at param number %d - %w", paramNumber, err))
 	}
 	return res
 }
 
-// MemoryAtParam returns the memory found at the specified direct access
-// parameter argument number.
-func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
+// RawPointerAtParam returns a pointer-size chunk of memory found at the
+// specified direct access parameter argument number using the '%p' format
+// specifier. The resulting byte sequence can be parsed using a PointerMaker.
+func (o DPAFormatStringLeaker) RawPointerAtParam(paramNumber int) ([]byte, error) {
 	if paramNumber > o.config.MaxNumParams {
 		// This is a problem because it may potentially shift
 		// the arguments on the stack, and make the result
@@ -330,13 +331,14 @@ func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 			paramNumber, o.config.MaxNumParams)
 	}
 
-	return leakDataWithFormatString(o.config.ProcessIO, o.FormatString(paramNumber), o.builder)
+	return leakDataWithFormatString(o.config.ProcessIO, o.PointerFormatString(paramNumber), o.builder)
 }
 
-// FormatString returns a new format string that can be used to leak data
-// at the specified direct parameter access argument number.
-func (o DPAFormatStringLeaker) FormatString(paramNum int) []byte {
-	return o.builder.buildDPA(paramNum, []byte{'p'}, o.alignedLen)
+// PointerFormatString returns a new format string that can leak
+// a single pointer-sized chunk of memory at the specified direct
+// parameter access argument number.
+func (o DPAFormatStringLeaker) PointerFormatString(paramNumber int) []byte {
+	return o.builder.buildDPA(paramNumber, []byte{'p'}, o.alignedLen)
 }
 
 // leakDataWithFormatString attempts to leak memory using a format string
