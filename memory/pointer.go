@@ -59,7 +59,8 @@ func PointerMakerFor(endianness binary.ByteOrder, bits int, pointerSizeBytes int
 	}, nil
 }
 
-// PointerMaker helps with converting various data types to Pointer objects.
+// PointerMaker helps with converting various representations of pointers
+// to Pointer objects. Refer to Pointer's documentation for more information.
 type PointerMaker struct {
 	target  binary.ByteOrder
 	bits    int
@@ -201,6 +202,8 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 }
 
 // Pointer provides a canonical representation of a memory address pointer.
+// A pointer is simply a variable that points to a memory address.
+//
 // This struct's methods render the pointer in the endianness for the
 // target platform, regardless of the selected data type.
 //

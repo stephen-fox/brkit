@@ -42,6 +42,19 @@ func ExamplePointerMaker_FromUint() {
 	// Output: 0xefbeadde
 }
 
+func ExamplePointerMaker_FromRawBytes() {
+	pm := PointerMakerForX86_32()
+
+	pointer, err := pm.FromRawBytes([]byte{0xde, 0xad, 0xbe, 0xef}, binary.BigEndian)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(pointer.HexString())
+
+	// Output: 0xefbeadde
+}
+
 func ExamplePointer_Bytes() {
 	pm := PointerMakerForX86_32()
 
