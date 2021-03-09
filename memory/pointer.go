@@ -204,8 +204,10 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 // This struct's methods render the pointer in the endianness for the
 // target platform, regardless of the selected data type.
 //
-// When created with a PointerMaker, the resulting []byte is guaranteed to be
-// padded to the size of a pointer on the target system.
+// When created with a PointerMaker, the []byte contained by this struct
+// is guaranteed to be padded to the size of a pointer on the target system.
+//
+// Pointers are created with a PointerMaker.
 type Pointer struct {
 	byteOrder binary.ByteOrder
 	address   uint
@@ -219,7 +221,7 @@ func (o Pointer) Bytes() []byte {
 
 // Uint returns the pointer as a unsigned integer.
 //
-// This helps with performing math on the pointer.
+// This is useful for performing math on the pointed-to address.
 func (o Pointer) Uint() uint {
 	return o.address
 }
