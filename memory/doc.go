@@ -6,7 +6,7 @@
 // pointers, or variables that point to a memory address, from another process.
 // The Pointer struct accomplishes this by storing the byte representation
 // in the endianness of the target process. These are created using
-// a PointerMaker, which simplifies targeting a specific platform.
+// a PointerMaker, which streamlines targeting a specific platform.
 //
 // This library also provides an AddressTable struct for organizing
 // memory addresses and offsets in different contexts. It attempts
@@ -17,14 +17,13 @@
 // Leaking and writing memory with format strings
 //
 // Misuse of the format family of C functions can spell disaster.
-// This library provides functionality for building memory leaks
-// and writes using format strings. Specifically, the types
-// FormatStringLeaker, DPAFormatStringLeaker, and DPAFormatStringWriter
-// provide a simple set of APIs for accomplishing this.
+// This library provides functionality for building memory leaks and
+// writes using format strings. Specifically, the FormatStringLeaker,
+// DPAFormatStringLeaker, and DPAFormatStringWriter provide a set of APIs
+// for accomplishing this.
 //
-// The structure of a format string used in a format string attack is dependent
-// on the objective of the user, the format specifier strategies available
-// to the user.
+// The structure of a format string is dependent on the objective of the user,
+// and the format specifiers available to the user.
 //
 // At a high level, these strategies include, but are not limited to,
 // the following:
@@ -39,15 +38,17 @@
 //	- Write data to memory by combining %c, %n, and DPA to specify
 //	  an address in the format string as raw bytes
 //
-// This library takes special care to place target memory addresses
-// at the end of the format string. This avoids situations when a null
-// byte would unexpectedly terminate a format string. Format strings
-// are also padded so that its arguments (such as a pointer) and the
-// string itself align with the size of a pointer on the target system.
-// This guarantees that the string will produce consistent leaks or
-// writes. Error handling enforces an upper limit on the length of
-// the arguments provided by the user to help prevent creation
-// of an unreliable format string attack.
+// This code takes special care to place target memory addresses
+// at the end of the format string. This avoids situations where a null
+// byte could unexpectedly terminate a format string. Format strings
+// are also padded such that its arguments and the string itself align
+// with the size of a pointer on the target system.
+//
+// Since functions parse arguments in chunks equivalent to the size
+// of a pointer, this guarantees that the string will produce consistent
+// leaks or writes. Error handling enforces an upper limit on the length
+// of the arguments provided by the user to prevent creating a string
+// that becomes unaligned with the target's pointer size.
 //
 // Please refer to "Exploiting Format String Vulnerabilities" by Team Teso
 // for an introduction to the subject:
