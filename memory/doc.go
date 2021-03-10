@@ -1,7 +1,18 @@
 // Package memory provides functionality for reading and writing memory.
 //
-// This API is heavily influenced by the 'pwntools' Python library,
-// and the 'pwn' Go library by Tnze.
+// Working with pointers and offsets
+//
+// One of the objectives of this library is to provide a simple API for storing
+// pointers, or variables that point to a memory address, from another process.
+// The Pointer struct accomplishes this by storing the byte representation
+// in the endianness of the target process. These are created using
+// a PointerMaker, which simplifies targeting a specific platform.
+//
+// This library also provides an AddressTable struct for organizing
+// memory addresses and offsets in different contexts. It attempts
+// to improve exploit development workflows by simplifying the management
+// of offsets. It is not referenced by any other code in this library,
+// and is meant to be purely a helper utility.
 //
 // Leaking and writing memory with format strings
 //
