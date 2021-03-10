@@ -3,7 +3,9 @@ package process
 import "log"
 
 var (
-	defaultExitFn = func(err error) {
+	// DefaultExitFn is invoked by functions and methods ending in
+	// the "OrExit" suffix when an error occurs.
+	DefaultExitFn = func(err error) {
 		log.Fatalln(err)
 	}
 )

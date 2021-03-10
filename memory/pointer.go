@@ -7,31 +7,39 @@ import (
 	"fmt"
 )
 
-func PointerMakerForX68_32() PointerMaker {
+// PointerMakerForX86_32 returns a new PointerMaker for a X86 32-bit system.
+func PointerMakerForX86_32() PointerMaker {
 	return PointerMaker{
-		byteOrder: binary.LittleEndian,
-		bits:      32,
-		ptrSize:   4,
+		target:  binary.LittleEndian,
+		bits:    32,
+		ptrSize: 4,
 	}
 }
 
-func PointerMakerForX68_64() PointerMaker {
+// PointerMakerForX86_64 returns a new PointerMaker for a X86 64-bit system.
+func PointerMakerForX86_64() PointerMaker {
 	return PointerMaker{
-		byteOrder: binary.LittleEndian,
-		bits:      64,
-		ptrSize:   8,
+		target:  binary.LittleEndian,
+		bits:    64,
+		ptrSize: 8,
 	}
 }
 
+// PointerMakerForOrExit calls PointerMakerFor, subsequently calling
+// DefaultExitFn if an error occurs.
+//
+// Refer to PointerMakerFor for more information.
 func PointerMakerForOrExit(endianness binary.ByteOrder, bits int, pointerSize int) PointerMaker {
 	pm, err := PointerMakerFor(endianness, bits, pointerSize)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to create pointer maker - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to create pointer maker - %w", err))
 	}
 	return pm
 }
 
-func PointerMakerFor(endianness binary.ByteOrder, bits int, pointerSize int) (PointerMaker, error) {
+// PointerMakerFor returns a new PointerMaker for the specified endianness,
+// bits, and pointer size in bytes.
+func PointerMakerFor(endianness binary.ByteOrder, bits int, pointerSizeBytes int) (PointerMaker, error) {
 	if endianness == nil {
 		return PointerMaker{}, fmt.Errorf("endianness cannot be nil")
 	}
@@ -40,62 +48,83 @@ func PointerMakerFor(endianness binary.ByteOrder, bits int, pointerSize int) (Po
 		return PointerMaker{}, fmt.Errorf("bits cannot be less than or equal to zero")
 	}
 
-	if pointerSize <= 0 {
+	if pointerSizeBytes <= 0 {
 		return PointerMaker{}, fmt.Errorf("pointer size cannot be less than or equal to zero")
 	}
 
 	return PointerMaker{
-		byteOrder: endianness,
-		bits:      bits,
-		ptrSize:   pointerSize,
+		target:  endianness,
+		bits:    bits,
+		ptrSize: pointerSizeBytes,
 	}, nil
 }
 
+// PointerMaker helps with converting various representations of pointers
+// to Pointer objects. Refer to Pointer's documentation for more information.
 type PointerMaker struct {
-	byteOrder binary.ByteOrder
-	bits      int
-	ptrSize   int
+	target  binary.ByteOrder
+	bits    int
+	ptrSize int
 }
 
+// FromUint converts an unsigned integer memory address into a Pointer.
 func (o PointerMaker) FromUint(address uint) Pointer {
 	out := make([]byte, o.ptrSize)
 	switch o.bits {
 	case 16:
-		o.byteOrder.PutUint16(out, uint16(address))
+		o.target.PutUint16(out, uint16(address))
 	case 32:
-		o.byteOrder.PutUint32(out, uint32(address))
+		o.target.PutUint32(out, uint32(address))
 	case 64:
-		o.byteOrder.PutUint64(out, uint64(address))
+		o.target.PutUint64(out, uint64(address))
 	default:
 		panic(fmt.Sprintf("unsupported bits: %d", o.bits))
 	}
 	return Pointer{
-		byteOrder: o.byteOrder,
+		byteOrder: o.target,
 		address:   address,
 		bytes:     out,
 	}
 }
 
+// FromHexStringOrExit calls PointerMaker.FromHexString, subsequently calling
+// DefaultExitFn if an error occurs.
+//
+// Refer to PointerMaker.FromHexString for more information.
 func (o PointerMaker) FromHexStringOrExit(hexStr string, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromHexString(hexStr, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert hex string to pointer - %w", err))
 	}
 	return p
 }
 
+// FromHexString converts a hex string to a Pointer according to the
+// source endianness.
+//
+// The string can be prefixed with a "0x", which will be discarded
+// prior to decoding.
 func (o PointerMaker) FromHexString(hexStr string, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	return o.FromHexBytes([]byte(hexStr), sourceEndianness)
 }
 
+// FromHexBytesOrExit calls PointerMaker.FromHexBytes, subsequently calling
+// DefaultExitFn if an error occurs.
+//
+// Refer to PointerMaker.FromHexBytes for more information.
 func (o PointerMaker) FromHexBytesOrExit(hexBytes []byte, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromHexBytes(hexBytes, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert hex bytes to pointer - %w", err))
 	}
 	return p
 }
 
+// FromHexBytes converts a hex encoded byte sequence to a Pointer according
+// to the source endianness.
+//
+// The byte sequence can be prefixed with a "0x", which will be discarded
+// prior to decoding..
 func (o PointerMaker) FromHexBytes(hexBytes []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	hexBytesNoPrefix := bytes.TrimPrefix(hexBytes, []byte("0x"))
 
@@ -108,22 +137,28 @@ func (o PointerMaker) FromHexBytes(hexBytes []byte, sourceEndianness binary.Byte
 	return o.FromRawBytes(decoded, sourceEndianness)
 }
 
+// FromRawBytesOrExit calls PointerMaker.FromRawBytes, subsequently calling
+// DefaultExitFn if an error occurs.
+//
+// Refer to PointerMaker.FromRawBytes for more information.
 func (o PointerMaker) FromRawBytesOrExit(raw []byte, sourceEndianness binary.ByteOrder) Pointer {
 	p, err := o.FromRawBytes(raw, sourceEndianness)
 	if err != nil {
-		defaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert raw bytes to pointer - %w", err))
 	}
 	return p
 }
 
+// FromRawBytes converts a raw []byte into a Pointer given its
+// source endianness.
 func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	rawLen := len(raw)
 	if rawLen == 0 {
-		return Pointer{}, fmt.Errorf("pointer bytes slice cannot be zero-length")
+		return Pointer{}, fmt.Errorf("bytes slice cannot be zero-length")
 	}
 
 	if rawLen > o.ptrSize {
-		return Pointer{}, fmt.Errorf("slice cannot be longer than pointer size of %d - it is %d bytes long",
+		return Pointer{}, fmt.Errorf("bytes slice cannot be longer than pointer size of %d - it is %d bytes long",
 			o.ptrSize, rawLen)
 	}
 
@@ -138,7 +173,7 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 	}
 
 	var canonicalBytes []byte
-	if sourceEndianness.String() == o.byteOrder.String() {
+	if sourceEndianness.String() == o.target.String() {
 		canonicalBytes = raw
 	} else {
 		canonicalBytes = make([]byte, o.ptrSize)
@@ -160,26 +195,42 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 	}
 
 	return Pointer{
-		byteOrder: o.byteOrder,
+		byteOrder: o.target,
 		address:   address,
 		bytes:     canonicalBytes,
 	}, nil
 }
 
+// Pointer provides a canonical representation of a memory address pointer.
+// A pointer is simply a variable that points to a memory address.
+//
+// This struct's methods render the pointer in the endianness for the
+// target platform, regardless of the selected data type.
+//
+// When created with a PointerMaker, the []byte contained by this struct
+// is guaranteed to be padded to the size of a pointer on the target system.
+//
+// Pointers are created with a PointerMaker.
 type Pointer struct {
 	byteOrder binary.ByteOrder
 	address   uint
 	bytes     []byte
 }
 
+// Bytes returns the pointer as a []byte.
 func (o Pointer) Bytes() []byte {
 	return o.bytes
 }
 
+// Uint returns the pointer as a unsigned integer.
+//
+// This is useful for performing math on the pointed-to address.
 func (o Pointer) Uint() uint {
 	return o.address
 }
 
+// HexString returns a hex-encoded string representing the pointer,
+// prefixed with the "0x" string.
 func (o Pointer) HexString() string {
 	return fmt.Sprintf("0x%x", o.Bytes())
 }

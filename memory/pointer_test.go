@@ -7,7 +7,7 @@ import (
 )
 
 func TestPointerMakerForX86_32_Uint(t *testing.T) {
-	pm := PointerMakerForX68_32()
+	pm := PointerMakerForX86_32()
 	pointer := pm.FromUint(0xdeadbeef)
 	exp := []byte{0xef, 0xbe, 0xad, 0xde}
 	if !bytes.Equal(pointer.Bytes(), exp) {
@@ -18,7 +18,7 @@ func TestPointerMakerForX86_32_Uint(t *testing.T) {
 func TestPointerMakerForX68_32_FromHexBytes(t *testing.T) {
 	exp := []byte{0xef, 0xbe, 0xad, 0x00}
 
-	pm := PointerMakerForX68_32()
+	pm := PointerMakerForX86_32()
 	pointer, err := pm.FromHexBytes([]byte("0xadbeef"), binary.BigEndian)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestPointerMakerForX68_32_FromHexBytes(t *testing.T) {
 }
 
 func TestPointerMakerForX86_64_FromUint(t *testing.T) {
-	pm := PointerMakerForX68_64()
+	pm := PointerMakerForX86_64()
 	pointer := pm.FromUint(0x00000000deadbeef)
 	exp := []byte{0xef, 0xbe, 0xad, 0xde, 0x00, 0x00, 0x00, 0x00}
 	if !bytes.Equal(pointer.Bytes(), exp) {
@@ -50,7 +50,7 @@ func TestPointerMakerForX86_64_FromUint(t *testing.T) {
 func TestPointerMakerForX68_64_FromHexBytes(t *testing.T) {
 	exp := []byte{0xef, 0xbe, 0xad, 0xde, 0x00, 0x00, 0x00, 0x00}
 
-	pm := PointerMakerForX68_64()
+	pm := PointerMakerForX86_64()
 	pointer, err := pm.FromHexBytes([]byte("0x00000000deadbeef"), binary.BigEndian)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestPointerMakerForX68_64_FromHexBytes(t *testing.T) {
 }
 
 func TestPointer_Uint(t *testing.T) {
-	pm := PointerMakerForX68_64()
+	pm := PointerMakerForX86_64()
 	pointer, err := pm.FromHexBytes([]byte("0x00000000deadbeef"), binary.BigEndian)
 	if err != nil {
 		t.Fatal(err)
