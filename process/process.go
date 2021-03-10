@@ -14,10 +14,10 @@ import (
 
 // TODO: Timeouts / deadlines.
 
-// ExecOrExit starts the specified *exec.Cmd. Refer to Exec for
-// more information.
+// ExecOrExit starts the specified *exec.Cmd, subsequently calling
+// DefaultExitFn if an error occurs.
 //
-// Any underlying errors result in a call to DefaultExitFn.
+// Refer to Exec for more information.
 func ExecOrExit(cmd *exec.Cmd, info Info) *Process {
 	p, err := Exec(cmd, info)
 	if err != nil {
@@ -88,9 +88,10 @@ type exitInfo struct {
 }
 
 // DialOrExit attempts to connect to a remote process using the specified
-// network type and address. Refer to Dial for more information.
+// network type and address, subsequently calling DefaultExitFn if an
+// error occurs.
 //
-// Any underlying errors result in a call to DefaultExitFn.
+// Refer to Dial for more information.
 func DialOrExit(network string, address string, info Info) *Process {
 	p, err := Dial(network, address, info)
 	if err != nil {
