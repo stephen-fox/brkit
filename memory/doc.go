@@ -27,15 +27,15 @@
 //
 // At a high level, these strategies include, but are not limited to,
 // the following:
-//	- Read data from memory using the direct parameter access (DPA),
-//	  by specifying the memory location as an argument number to
-//	  the format function
+//	- Read data from memory using the direct parameter access (DPA)
+//	  feature, which specifies the memory location as an argument
+//	  number to the format function
 //	- Read data at the specified memory address by appending its raw
 //	  bytes to the end of a format string, and referring the raw bytes
 //	  using the DPA feature
-//	- Write data to memory at a given argument number to the
-//	  format function using DPA, and combining %c and %n specifiers
-//	- Write data to memory by combining %c, %n, and DPA to specify
+//	- Write data to memory at a given argument number to the format
+//	  function using DPA, and combining '%c' and '%n' specifiers
+//	- Write data to memory by combining '%c', '%n', and DPA to specify
 //	  an address in the format string as raw bytes
 //
 // This code takes special care to place target memory addresses
