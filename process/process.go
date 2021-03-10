@@ -147,7 +147,11 @@ func X86_64Info() Info {
 
 // Info specifies platform information about the process.
 type Info struct {
+	// PlatformBits is the number of CPU bits (e.g., 32).
 	PlatformBits int
+
+	// PtrSizeBytes is the size of a pointer in bytes on
+	// the target system.
 	PtrSizeBytes int
 }
 
