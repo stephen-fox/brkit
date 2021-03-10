@@ -4,13 +4,13 @@ import "log"
 
 // ProcessIO abstracts the input/output of a running software process.
 type ProcessIO interface {
-	// WriteLine writes the specified []byte to the process
-	// and appends a new line.
+	// WriteLine appends a new line character to the specified []byte
+	// and writes it to the process' input.
 	WriteLine(p []byte) error
 
-	// ReadUntil ReadUntil blocks and attempts to read from the
-	// process' output until the specified []byte is found,
-	// returning the data read, including the specified []byte.
+	// ReadUntil blocks and attempts to read from the process'
+	// output until the specified []byte is found. It returns the
+	// data read from the process, including the specified []byte.
 	ReadUntil(p []byte) ([]byte, error)
 
 	// PointerSizeBytes returns the size of a pointer in bytes

@@ -313,8 +313,8 @@ func (o Process) WriteLineOrExit(p []byte) {
 	}
 }
 
-// WriteLine blocks and attempts to write the specified []byte
-// with an appended new line character to the process' input.
+// WriteLine appends a new line character to the specified []byte
+// and writes it to the process' input.
 func (o Process) WriteLine(p []byte) error {
 	_, err := o.input.Write(append(p, '\n'))
 	return err
