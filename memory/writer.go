@@ -20,23 +20,23 @@ type DPAFormatStringWriterConfig struct {
 	DPAConfig DPAFormatStringConfig
 }
 
-// NewDPAFormatStringWriterOrExit calls NewDPAFormatStringWriter, subsequently
-// calling DefaultExitFn if an error occurs.
+// SetupDPAFormatStringWriterOrExit calls SetupDPAFormatStringWriter,
+// subsequently calling DefaultExitFn if an error occurs.
 //
-// Refer to NewDPAFormatStringWriter for more information.
-func NewDPAFormatStringWriterOrExit(config DPAFormatStringWriterConfig) *DPAFormatStringWriter {
-	w, err := NewDPAFormatStringWriter(config)
+// Refer to SetupDPAFormatStringWriter for more information.
+func SetupDPAFormatStringWriterOrExit(config DPAFormatStringWriterConfig) *DPAFormatStringWriter {
+	w, err := SetupDPAFormatStringWriter(config)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to create new dpa format string writer - %w", err))
 	}
 	return w
 }
 
-// NewDPAFormatStringWriter creates a new instance of a *DPAFormatStringWriter.
+// SetupDPAFormatStringWriter creates a new *DPAFormatStringWriter.
 // To accomplish this, the function first leaks the direct parameter access
 // (DPA) argument number of an oracle string. The oracle is subsequently
 // replaced with a memory address that the user would like to write to.
-func NewDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStringWriter, error) {
+func SetupDPAFormatStringWriter(config DPAFormatStringWriterConfig) (*DPAFormatStringWriter, error) {
 	if config.MaxWrite <= 0 {
 		return nil, fmt.Errorf("maximum write size cannot be less than or equal to zero")
 	}

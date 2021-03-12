@@ -143,7 +143,7 @@ func leakMemoryAtLoop(proc *process.Process) {
 }
 
 func writeMemoryLoop(proc *process.Process) {
-	writer := memory.NewDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
+	writer := memory.SetupDPAFormatStringWriterOrExit(memory.DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIO:    proc,

@@ -2,8 +2,8 @@ package memory
 
 import "log"
 
-func ExampleNewDPAFormatStringWriter() {
-	writer, err := NewDPAFormatStringWriter(DPAFormatStringWriterConfig{
+func ExampleSetupDPAFormatStringWriter() {
+	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
@@ -20,7 +20,7 @@ func ExampleNewDPAFormatStringWriter() {
 }
 
 func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
-	writer, err := NewDPAFormatStringWriter(DPAFormatStringWriterConfig{
+	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
@@ -41,7 +41,7 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 }
 
 func ExampleDPAFormatStringWriter_WriteLowerTwoBytesAt() {
-	writer, err := NewDPAFormatStringWriter(DPAFormatStringWriterConfig{
+	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
@@ -62,7 +62,7 @@ func ExampleDPAFormatStringWriter_WriteLowerTwoBytesAt() {
 }
 
 func ExampleDPAFormatStringWriter_WriteLowestByteAt() {
-	writer, err := NewDPAFormatStringWriter(DPAFormatStringWriterConfig{
+	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
