@@ -10,7 +10,7 @@ import (
 func ExampleExec() {
 	cmd := exec.Command("cat")
 
-	proc, err := Exec(cmd)
+	proc, err := Exec(cmd, X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -30,7 +30,7 @@ func ExampleExec() {
 }
 
 func ExampleDial() {
-	proc, err := Dial("tcp4", "192.168.1.2:8080")
+	proc, err := Dial("tcp4", "192.168.1.2:8080", X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -45,7 +45,7 @@ func ExampleFromNetConn() {
 		log.Fatalln(err)
 	}
 
-	proc := FromNetConn(c)
+	proc := FromNetConn(c, X86_64Info())
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -58,13 +58,13 @@ func ExampleFromNetConn_FromTLSConnection() {
 		log.Fatalln(err)
 	}
 
-	proc := FromNetConn(tlsConn)
+	proc := FromNetConn(tlsConn, X86_64Info())
 
 	proc.WriteLine([]byte("hello world"))
 }
 
 func ExampleProcess_Cleanup() {
-	proc, err := Exec(exec.Command("cat"))
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -72,7 +72,7 @@ func ExampleProcess_Cleanup() {
 }
 
 func ExampleProcess_WriteLine() {
-	proc, err := Exec(exec.Command("cat"))
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -82,7 +82,7 @@ func ExampleProcess_WriteLine() {
 }
 
 func ExampleProcess_Write() {
-	proc, err := Exec(exec.Command("cat"))
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -92,7 +92,7 @@ func ExampleProcess_Write() {
 }
 
 func ExampleProcess_Interactive() {
-	proc, err := Exec(exec.Command("cat"))
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
