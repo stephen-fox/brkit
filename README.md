@@ -1,8 +1,7 @@
-# brkit
 
 [![GoDoc][godoc-badge]][godoc]
 
-[godoc-badge]: https://pkg.go.dev/gitlab.com/stephen-fox/brkit?status.svg
+[godoc-badge]: https://pkg.go.dev/badge/gitlab.com/stephen-fox/brkit
 [godoc]: https://pkg.go.dev/gitlab.com/stephen-fox/brkit
 
 Package brkit provides functionality for binary research.
