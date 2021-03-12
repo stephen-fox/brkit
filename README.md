@@ -16,10 +16,15 @@ goal of this project is to help with solving hacking CTF challenges. The API is
 open-minded in the sense it could be used (responsibly) for non-CTF work.
 
 ## APIs
-brkit is broken into several subpackages, each representing a distinct set
-of functionality. The following subsections will outline their usage.
-Please refer to the GoDoc documentation for detailed explanations
-and usage examples.
+brkit is broken into several sub-packages, each representing a distinct set
+of functionality. To help with scripting, a set of proxy APIs are provided which
+simply exit the program when an error occurs. These API names end with the
+suffix `OrExit` to indicate this behavior. Essentially, they call the
+corresponding API, check if an error occurred, and call `log.Fatalln`.
+
+The following subsections outline the various sub-packages and their usage.
+Please refer to the GoDoc documentation for detailed explanations and
+usage examples.
 
 #### `memory`
 Package memory provides functionality for reading and writing memory.
@@ -132,10 +137,53 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 Package process provides functionality for working with running
 software processes.
 
-TODO
+A software process is represented by the `Process` struct. This abstracts
+interaction with a process, regardless of it being a process started by the
+library, or an existing one running on another machine across the network.
+Several constructor-like functions aid in the instantiation of a new `Process`.
+For example, a new process can exec'ed like so:
 
-## Scriptability
-TODO
+```go
+func ExampleExec() {
+	cmd := exec.Command("cat")
+
+	proc, err := process.Exec(cmd, process.X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Cleanup()
+
+	err = proc.WriteLine([]byte("hello world"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	line, err := proc.ReadLine()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Printf("%s", line)
+}
+```
+
+If the process has a TCP listener, it can be connected to like so:
+
+```go
+func ExampleDial() {
+	proc, err := Dial("tcp4", "192.168.1.2:8080", process.X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Cleanup()
+
+	proc.WriteLine([]byte("hello world"))
+}
+```
+
+These functions accept a `Info` struct which stores information about the
+process, such as its bits. These can be instantiated by specifying their field
+values, or by calling the constructor-like helper functions.
 
 ## Command line utilities
 Several command line utilities are included to aid in binary research efforts.
@@ -152,7 +200,7 @@ string begins to overwrite program state (e.g., stack-based buffer overflows).
 An application for working with strings of bytes, and manipulating data.
 
 ## Special thanks
-Several of the APIs in this library (namely the `process` subpackage) are
+Several of the APIs in this library (namely the `process` sub-package) are
 heavily inspired by:
 
 - [pwntools](https://github.com/Gallopsled/pwntools)
