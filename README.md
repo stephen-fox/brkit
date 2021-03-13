@@ -26,6 +26,10 @@ The following subsections outline the various sub-packages and their usage.
 Please refer to the GoDoc documentation for detailed explanations and
 usage examples.
 
+#### `conv`
+Package conv provides functionality for converting binary-related data from one
+format to another.
+
 #### `memory`
 Package memory provides functionality for reading and writing memory.
 
