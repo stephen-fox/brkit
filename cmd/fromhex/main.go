@@ -1,21 +1,20 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
+
+	"gitlab.com/stephen-fox/brkit/conv"
 )
 
 const (
 	outputFormatArg = "o"
-	verboseArg      = "v"
 	helpArg         = "h"
 
 	hexFormat = "hex"
@@ -26,8 +25,10 @@ const (
 	usage   = appName + `
 Encodes a hex-encoded binary data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") into
 another encoding. The hex string can be supplied via stdin, as a single command
-line argument, or as several command line arguments. The motivation behind
-this tool was to help convert shellcode strings to various encodings.
+line argument, or as several command line arguments. Data can be provided as
+a C-style array variable's contents. C comments are automatically discarded.
+The motivation behind this tool was to help convert shellcode strings to
+various encodings.
 
 The example hex string was written by Charles Stevenson (core@bokeoa.com):
 http://shell-storm.org/shellcode/files/shellcode-55.php
@@ -48,10 +49,6 @@ func main() {
 		outputFormatArg,
 		rawFormat,
 		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
-	verbose := flag.Bool(
-		verboseArg,
-		false,
-		"Enable verbose logging")
 	help := flag.Bool(
 		helpArg,
 		false,
@@ -84,26 +81,7 @@ func main() {
 		scannerSource = concat
 	}
 
-	hexASCII := bytes.NewBuffer(nil)
-	scanner := bufio.NewScanner(scannerSource)
-	scanner.Split(bufio.ScanBytes)
-	for scanner.Scan() {
-		switch scanner.Bytes()[0] {
-		case 'x', '\\', '"', '\n', ' ':
-			continue
-		}
-
-		if *verbose {
-			log.Printf("read: 0x%x\n", scanner.Bytes())
-		}
-
-		hexASCII.Write(scanner.Bytes())
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("failed to read from %s - %s", sourceName, err)
-	}
-
-	decoded, err := hex.DecodeString(hexASCII.String())
+	decoded, err := conv.HexArrayToBytes(scannerSource)
 	if err != nil {
 		log.Fatalf("failed to hex decode data from %s - %s", sourceName, err)
 	}
