@@ -214,6 +214,22 @@ buffer overflows).
 A string creation and manipulation tool capable of creating pattern strings and
 arbitrary binary data.
 
+## Installing command line utilities
+Since this is a Go (Golang) application, the preferred method of installation
+is using `go install`. This automates downloading and building Go applications
+from source in a secure manner. By default, this copies applications
+into `~/go/bin/`.
+
+You must first [install Go](https://golang.org/doc/install). After
+installing Go, simply run the following command to install one of
+the applications:
+
+```sh
+# Note: Be sure to replace '<app-name>'.
+go install gitlab.com/stephen-fox/brkit/cmd/<app-name>@latest
+# If successful, the resulting exectuable should be in "~/go/bin/".
+```
+
 ## Special thanks
 Several of the APIs in this library (namely the `process` sub-package) are
 heavily inspired by:
