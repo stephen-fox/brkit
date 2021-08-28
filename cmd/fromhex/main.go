@@ -1,4 +1,4 @@
-// fromhex eecodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and
+// fromhex decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and
 // encodes the underlying binary data into another encoding.
 package main
 
