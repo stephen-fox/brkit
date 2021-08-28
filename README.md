@@ -215,7 +215,7 @@ A string creation and manipulation tool capable of creating pattern strings and
 arbitrary binary data.
 
 ## Installing command line utilities
-Since this is a Go (Golang) application, the preferred method of installation
+Since this is a Go (Golang) project, the preferred method of installation
 is using `go install`. This automates downloading and building Go applications
 from source in a secure manner. By default, this copies applications
 into `~/go/bin/`.
