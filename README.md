@@ -7,6 +7,9 @@
 
 Package brkit provides functionality for binary research.
 
+## Table of contents
+[[_TOC_]]
+
 ## Use case
 This library was originally developed as a collection of small command line
 utilities. It eventually expanded into a library that mimics the functionality
