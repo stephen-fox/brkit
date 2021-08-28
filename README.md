@@ -37,10 +37,12 @@ format to another.
 Package memory provides functionality for reading and writing memory.
 
 This library is useful for constructing memory leaks and writes, as well as
-tracking memory addresses and pointers programmatically. The `AddressTable`
-struct provides a small API for organizing memory offsets in different contexts.
-For example, it can be used to track glibc symbol offsets for
-different machines:
+tracking memory addresses and pointers programmatically.
+
+###### `AddressTable`
+The `AddressTable` struct provides a small API for organizing memory offsets in
+different contexts. For example, it can be used to track glibc symbol offsets
+for different machines:
 
 ```go
 func ExampleAddressTable() {
@@ -62,6 +64,7 @@ func ExampleAddressTable() {
 }
 ```
 
+###### `Pointer`
 The `Pointer` struct is used for tracking variables that point to memory
 addresses in a separate software process. It accomplishes this by storing
 the pointed-to address as a []byte in the correct endianness (also known as
@@ -83,17 +86,20 @@ func ExamplePointer_Uint_Math() {
 }
 ```
 
-The `ProcessIO` interface type fulfills a similar role as the `io.ReadWriter`.
-It abstracts a process' input/output and other important attributes. Normally,
-this is provided by the `process.Process` type - but can be implemented
-different as desired.
-
+###### Format string exploitation
 This library also provides functions for automating the creation of format
 string attacks, primarily through the direct parameter access (DPA) feature.
 The `SetupFormatStringLeakViaDPA` function accomplishes this by first leaking
 an oracle string within a newly created format string. This oracle is replaced
 with an address provided by the caller. All of this is done before returning
-to the caller:
+to the caller.
+
+The `ProcessIO` interface type fulfills a similar role as the `io.ReadWriter`.
+It abstracts a process' input/output and other important attributes. Normally,
+this is provided by the `process.Process` type - but can be implemented
+different as desired.
+
+This allows for format string exploitation automation:
 
 ```go
 func ExampleSetupFormatStringLeakViaDPA() {
