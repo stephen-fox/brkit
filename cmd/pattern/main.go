@@ -1,3 +1,6 @@
+// pattern finds repeating patterns in strings. This is useful for locating
+// where an input string begins to overwrite program state (e.g., stack-based
+// buffer overflows).
 package main
 
 import (

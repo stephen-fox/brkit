@@ -202,15 +202,17 @@ values, or by calling the constructor-like helper functions.
 Several command line utilities are included to aid in binary research efforts.
 
 #### `fromhex`
-Encodes a hex-encoded binary data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") into
-another encoding.
+Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
+the underlying binary data into another encoding.
 
 #### `pattern`
-Find repeating string patterns in strings. Useful for finding where an input
-string begins to overwrite program state (e.g., stack-based buffer overflows).
+Finds repeating patterns in strings. This is useful for locating
+where an input string begins to overwrite program state (e.g., stack-based
+buffer overflows).
 
 #### `stringer`
-An application for working with strings of bytes, and manipulating data.
+A string creation and manipulation tool capable of creating pattern strings and
+arbitrary binary data.
 
 ## Special thanks
 Several of the APIs in this library (namely the `process` sub-package) are

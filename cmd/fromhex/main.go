@@ -1,3 +1,5 @@
+// fromhex eecodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and
+// encodes the underlying binary data into another encoding.
 package main
 
 import (
@@ -23,12 +25,13 @@ const (
 
 	appName = "fromhex"
 	usage   = appName + `
-Encodes a hex-encoded binary data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") into
-another encoding. The hex string can be supplied via stdin, as a single command
-line argument, or as several command line arguments. Data can be provided as
-a C-style array variable's contents. C comments are automatically discarded.
-The motivation behind this tool was to help convert shellcode strings to
-various encodings.
+Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
+the underlying binary data into another encoding.
+
+The hex string can be supplied via stdin, as a single command line argument,
+or as several command line arguments. Data can be provided as a C-style array
+variable's contents. C comments are automatically discarded. The motivation
+behind this tool was to help convert shellcode strings to various encodings.
 
 The example hex string was written by Charles Stevenson (core@bokeoa.com):
 http://shell-storm.org/shellcode/files/shellcode-55.php
