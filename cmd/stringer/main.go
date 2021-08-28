@@ -1,3 +1,5 @@
+// stringer is a string creation and manipulation tool capable of creating
+// pattern strings and arbitrary binary data.
 package main
 
 import (
@@ -30,7 +32,8 @@ const (
 
 	appName = "stringer"
 	usage   = appName + `
-An application for working with strings of bytes, and manipulating data.
+A string creation and manipulation tool capable of creating pattern strings and
+arbitrary binary data.
 
 usage:
   ` + appName + ` [main options] [string [string manipulation options]...]

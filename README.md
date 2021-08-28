@@ -7,6 +7,9 @@
 
 Package brkit provides functionality for binary research.
 
+## Table of contents
+[[_TOC_]]
+
 ## Use case
 This library was originally developed as a collection of small command line
 utilities. It eventually expanded into a library that mimics the functionality
@@ -34,10 +37,12 @@ format to another.
 Package memory provides functionality for reading and writing memory.
 
 This library is useful for constructing memory leaks and writes, as well as
-tracking memory addresses and pointers programmatically. The `AddressTable`
-struct provides a small API for organizing memory offsets in different contexts.
-For example, it can be used to track glibc symbol offsets for
-different machines:
+tracking memory addresses and pointers programmatically.
+
+###### `AddressTable`
+The `AddressTable` struct provides a small API for organizing memory offsets in
+different contexts. For example, it can be used to track glibc symbol offsets
+for different machines:
 
 ```go
 func ExampleAddressTable() {
@@ -59,6 +64,7 @@ func ExampleAddressTable() {
 }
 ```
 
+###### `Pointer`
 The `Pointer` struct is used for tracking variables that point to memory
 addresses in a separate software process. It accomplishes this by storing
 the pointed-to address as a []byte in the correct endianness (also known as
@@ -80,17 +86,20 @@ func ExamplePointer_Uint_Math() {
 }
 ```
 
-The `ProcessIO` interface type fulfills a similar role as the `io.ReadWriter`.
-It abstracts a process' input/output and other important attributes. Normally,
-this is provided by the `process.Process` type - but can be implemented
-different as desired.
-
+###### Format string exploitation
 This library also provides functions for automating the creation of format
 string attacks, primarily through the direct parameter access (DPA) feature.
 The `SetupFormatStringLeakViaDPA` function accomplishes this by first leaking
 an oracle string within a newly created format string. This oracle is replaced
 with an address provided by the caller. All of this is done before returning
-to the caller:
+to the caller.
+
+The `ProcessIO` interface type fulfills a similar role as the `io.ReadWriter`.
+It abstracts a process' input/output and other important attributes. Normally,
+this is provided by the `process.Process` type - but can be implemented
+different as desired.
+
+This allows for format string exploitation automation:
 
 ```go
 func ExampleSetupFormatStringLeakViaDPA() {
@@ -193,15 +202,33 @@ values, or by calling the constructor-like helper functions.
 Several command line utilities are included to aid in binary research efforts.
 
 #### `fromhex`
-Encodes a hex-encoded binary data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") into
-another encoding.
+Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
+the underlying binary data into another encoding.
 
 #### `pattern`
-Find repeating string patterns in strings. Useful for finding where an input
-string begins to overwrite program state (e.g., stack-based buffer overflows).
+Finds repeating patterns in strings. This is useful for locating
+where an input string begins to overwrite program state (e.g., stack-based
+buffer overflows).
 
 #### `stringer`
-An application for working with strings of bytes, and manipulating data.
+A string creation and manipulation tool capable of creating pattern strings and
+arbitrary binary data.
+
+## Installing command line utilities
+Since this is a Go (Golang) project, the preferred method of installation
+is using `go install`. This automates downloading and building Go applications
+from source in a secure manner. By default, this copies applications
+into `~/go/bin/`.
+
+You must first [install Go](https://golang.org/doc/install). After
+installing Go, simply run the following command to install one of
+the applications:
+
+```sh
+# Note: Be sure to replace '<app-name>'.
+go install gitlab.com/stephen-fox/brkit/cmd/<app-name>@latest
+# If successful, the resulting exectuable should be in "~/go/bin/".
+```
 
 ## Special thanks
 Several of the APIs in this library (namely the `process` sub-package) are
