@@ -204,7 +204,7 @@ func (o *byteSliceStringer) addBytePerIndex(decoded []byte, isLast bool) (int, e
 				return n, err
 			}
 
-			o.currentLineLen += n
+			o.currentLineLen += n3
 		}
 	}
 
