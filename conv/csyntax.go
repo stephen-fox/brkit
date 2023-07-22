@@ -41,7 +41,7 @@ func CArrayToGoSlice(r io.Reader, w io.Writer) error {
 	// one space.
 	longestLine = longestLine*2 + numExtraChars + 1
 
-	out := byteSliceFormat{
+	out := byteSliceStringer{
 		w:            bufio.NewWriter(w),
 		noFormatting: true,
 	}
@@ -94,9 +94,9 @@ func CArrayToGoSlice(r io.Reader, w io.Writer) error {
 	return nil
 }
 
-// BytesToGoSliceFormat converts a []byte into a Go []byte declaration string.
-func BytesToGoSliceFormat(b []byte, noFormatting bool, w io.Writer) error {
-	out := byteSliceFormat{
+// BytesToGoSliceString converts a []byte into a Go []byte declaration string.
+func BytesToGoSliceString(b []byte, noFormatting bool, w io.Writer) error {
+	out := byteSliceStringer{
 		w:            bufio.NewWriter(w),
 		noFormatting: noFormatting,
 	}
@@ -114,18 +114,18 @@ func BytesToGoSliceFormat(b []byte, noFormatting bool, w io.Writer) error {
 	return out.end()
 }
 
-type byteSliceFormat struct {
+type byteSliceStringer struct {
 	w              *bufio.Writer
 	noFormatting   bool
 	currentLineLen int
 }
 
-func (o *byteSliceFormat) start() error {
+func (o *byteSliceStringer) start() error {
 	_, err := o.w.Write([]byte("[]byte{"))
 	return err
 }
 
-func (o *byteSliceFormat) addBytesAsOneIndex(decoded []byte, isLast bool) (int, error) {
+func (o *byteSliceStringer) addBytesAsOneIndex(decoded []byte, isLast bool) (int, error) {
 	b := []byte(fmt.Sprintf("0x%x", decoded))
 	n, err := o.w.Write(b)
 	if err != nil {
@@ -165,7 +165,7 @@ func (o *byteSliceFormat) addBytesAsOneIndex(decoded []byte, isLast bool) (int, 
 	return n, nil
 }
 
-func (o *byteSliceFormat) addBytePerIndex(decoded []byte, isLast bool) (int, error) {
+func (o *byteSliceStringer) addBytePerIndex(decoded []byte, isLast bool) (int, error) {
 	decodedLen := len(decoded)
 	n := 0
 
@@ -211,12 +211,12 @@ func (o *byteSliceFormat) addBytePerIndex(decoded []byte, isLast bool) (int, err
 	return n, nil
 }
 
-func (o *byteSliceFormat) add(b []byte) error {
+func (o *byteSliceStringer) add(b []byte) error {
 	_, err := o.w.Write(b)
 	return err
 }
 
-func (o *byteSliceFormat) end() error {
+func (o *byteSliceStringer) end() error {
 	_, err := o.w.Write([]byte{'}', '\n'})
 	if err != nil {
 		return err
