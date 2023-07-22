@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"flag"
@@ -106,39 +105,7 @@ func main() {
 	case b64Format:
 		fmt.Print(base64.StdEncoding.EncodeToString(decoded))
 	case goFormat:
-		decodedLen := len(decoded)
-		currentLineLen := 0
-		bufioWriter := bufio.NewWriter(os.Stdout)
-
-		_, err := bufioWriter.WriteString("[]byte{")
-		if err != nil {
-			log.Fatalf("fatal: %s", err)
-		}
-
-		for i, b := range decoded {
-			needsComma := decodedLen > 1 && i != decodedLen-1
-
-			bufioWriter.WriteString("0x")
-			bufioWriter.WriteString(fmt.Sprintf("%x", b))
-			currentLineLen += 4
-
-			if needsComma {
-				bufioWriter.WriteByte(',')
-				currentLineLen++
-			}
-
-			if !*noFormatting && currentLineLen >= 62 {
-				currentLineLen = 0
-				bufioWriter.WriteString("\n\t")
-			} else if needsComma {
-				bufioWriter.WriteByte(' ')
-				currentLineLen++
-			}
-		}
-
-		bufioWriter.WriteString("}\n")
-
-		err = bufioWriter.Flush()
+		err := conv.BytesToGoSliceString(decoded, *noFormatting, os.Stdout)
 		if err != nil {
 			log.Fatalf("fatal: %s", err)
 		}
