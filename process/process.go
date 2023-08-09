@@ -333,10 +333,15 @@ func (o Process) WriteOrExit(p []byte) {
 // process' input.
 func (o Process) Write(p []byte) error {
 	if o.logger != nil {
-		o.logger.Printf("writing line 0x%x", p)
+		o.logger.Printf("writing 0x%x", p)
 	}
+
 	_, err := o.input.Write(p)
-	return fmt.Errorf("failed to write 0x%x - %w", p, err)
+	if err != nil {
+		return fmt.Errorf("failed to write 0x%x - %w", p, err)
+	}
+
+	return nil
 }
 
 // SetLogger sets the *log.Logger for debugging purposes.
