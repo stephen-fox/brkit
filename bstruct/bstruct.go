@@ -28,30 +28,22 @@ type FieldInfo struct {
 	Value []byte
 }
 
-func FieldWriterFn(w io.Writer) func(FieldInfo) error {
+func FieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error {
 	return func(f FieldInfo) error {
-		_, err := w.Write(f.Value)
-		return err
-	}
-}
-
-func DebugFieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error {
-	return func(f FieldInfo) error {
-		logger := log.Default()
 		if len(optLogger) > 0 {
-			logger = optLogger[0]
-		}
+			logger := optLogger[0]
 
-		hexDump := hex.Dump(f.Value)
-		if len(hexDump) <= 1 {
-			// hex.Dump always adds a newline.
-			hexDump = "<empty-value>"
-		} else {
-			hexDump = hexDump[0 : len(hexDump)-1]
-		}
+			hexDump := hex.Dump(f.Value)
+			if len(hexDump) <= 1 {
+				// hex.Dump always adds a newline.
+				hexDump = "<empty-value>"
+			} else {
+				hexDump = hexDump[0 : len(hexDump)-1]
+			}
 
-		logger.Printf("writing field: %d | name: %q | type: %s | value:\n%s",
-			f.Index, f.Name, f.Type, hexDump)
+			logger.Printf("writing field: %d | name: %q | type: %s | value:\n%s",
+				f.Index, f.Name, f.Type, hexDump)
+		}
 
 		_, err := w.Write(f.Value)
 		return err
