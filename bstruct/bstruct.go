@@ -58,7 +58,7 @@ func ToBytesX86OrExit(fieldFn func(FieldInfo) error, s interface{}) {
 }
 
 func ToBytesX86(fieldFn func(FieldInfo) error, s interface{}) error {
-	err := ToBytes(binary.LittleEndian, ReverseFieldOrder, fieldFn, s)
+	err := ToBytes(binary.LittleEndian, GoFieldOrder, fieldFn, s)
 	if err != nil {
 		return err
 	}
