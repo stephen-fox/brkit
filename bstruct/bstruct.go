@@ -44,8 +44,14 @@ func StructToBytes(s interface{}, bo binary.ByteOrder, optFn func(FieldInfo) err
 		field := structType.Field(i)
 		fieldValue := structValue.Field(i)
 
-		//fmt.Printf("field %d: %s (%s) = %T\n", i,
-		//	field.Name, field.Type, fieldValue.Interface())
+		if !field.IsExported() {
+			v, hasIt := field.Tag.Lookup("brkit")
+			if hasIt && v == "-" {
+				continue
+			}
+
+			return nil, fmt.Errorf("field %q is not exported - it can be explicitly ignored using the tag `brkit:\"-\"`", field.Name)
+		}
 
 		at := len(b)
 
