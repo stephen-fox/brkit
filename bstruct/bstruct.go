@@ -18,6 +18,15 @@ type FieldInfo struct {
 	Value []byte
 }
 
+func StructToBytesOrExit(s interface{}, bo binary.ByteOrder, optFn func(FieldInfo) error) []byte {
+	b, err := StructToBytes(s, bo, optFn)
+	if err != nil {
+		DefaultExitFn(err)
+	}
+
+	return b
+}
+
 func StructToBytes(s interface{}, bo binary.ByteOrder, optFn func(FieldInfo) error) ([]byte, error) {
 	if s == nil {
 		return nil, errors.New("struct is nil")
