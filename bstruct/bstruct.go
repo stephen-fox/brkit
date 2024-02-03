@@ -53,7 +53,7 @@ func FieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error 
 func ToBytesX86OrExit(fieldFn func(FieldInfo) error, s interface{}) {
 	err := ToBytesX86(fieldFn, s)
 	if err != nil {
-		DefaultExitFn(fmt.Errorf("failed to convert struct to bytes x86 - %w", err))
+		DefaultExitFn(fmt.Errorf("failed to convert struct to bytes for x86 - %w", err))
 	}
 }
 
