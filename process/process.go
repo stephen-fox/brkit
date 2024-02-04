@@ -331,17 +331,17 @@ func (o Process) WriteOrExit(p []byte) {
 
 // Write blocks and attempts to write the specified []byte to the
 // process' input.
-func (o Process) Write(p []byte) error {
+func (o Process) Write(p []byte) (int, error) {
 	if o.logger != nil {
 		o.logger.Printf("writing 0x%x", p)
 	}
 
-	_, err := o.input.Write(p)
+	n, err := o.input.Write(p)
 	if err != nil {
-		return fmt.Errorf("failed to write 0x%x - %w", p, err)
+		return n, fmt.Errorf("failed to write 0x%x - %w", p, err)
 	}
 
-	return nil
+	return n, nil
 }
 
 // SetLogger sets the *log.Logger for debugging purposes.
