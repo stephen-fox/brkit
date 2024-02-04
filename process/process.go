@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 )
 
 // TODO: Timeouts / deadlines.
@@ -124,8 +125,46 @@ func FromNetConn(c net.Conn, info Info) *Process {
 		output: bufio.NewReader(c),
 		rwMu:   &sync.RWMutex{},
 		info:   info,
-		done:   func() error {
+		done: func() error {
 			return c.Close()
+		},
+	}
+}
+
+func FromNamedPipesOrExit(inputPipePath string, outputPipePath string, info Info) *Process {
+	p, err := FromNamedPipes(inputPipePath, outputPipePath, info)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("failed to create process from named pipes - %w", err))
+	}
+
+	return p
+}
+
+func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Process, error) {
+	input, err := os.OpenFile(inputPipePath, os.O_WRONLY|syscall.O_NONBLOCK, os.ModeNamedPipe)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open input pipe - %w", err)
+	}
+
+	output, err := os.OpenFile(outputPipePath, os.O_RDONLY|syscall.O_NONBLOCK, os.ModeNamedPipe)
+	if err != nil {
+		_ = input.Close()
+		return nil, fmt.Errorf("failed to open output pipe - %w", err)
+	}
+
+	return FromOSFiles(input, output, info), nil
+}
+
+func FromOSFiles(input *os.File, output *os.File, info Info) *Process {
+	return &Process{
+		input:  input,
+		output: bufio.NewReader(output),
+		rwMu:   &sync.RWMutex{},
+		info:   info,
+		done: func() error {
+			_ = input.Close()
+			_ = output.Close()
+			return nil
 		},
 	}
 }
