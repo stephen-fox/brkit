@@ -88,7 +88,7 @@ func ExampleProcess_Write() {
 	}
 	defer proc.Cleanup()
 
-	proc.WriteLine([]byte("hello world\n"))
+	proc.Write([]byte("hello world\n"))
 }
 
 func ExampleProcess_Interactive() {
