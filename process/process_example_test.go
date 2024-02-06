@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 )
 
@@ -61,6 +62,21 @@ func ExampleFromNetConn_FromTLSConnection() {
 	proc := FromNetConn(tlsConn, X86_64Info())
 
 	proc.WriteLine([]byte("hello world"))
+}
+
+func ExampleFromNamedPipes() {
+	proc, err := FromNamedPipes("/path/to/input.fifo", "/path/to/output.fifo", X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	proc.Write([]byte("hello world"))
+}
+
+func ExampleFromOSFiles() {
+	proc := FromOSFiles(os.Stdin, os.Stdout, X86_64Info())
+
+	proc.Write([]byte("hello world"))
 }
 
 func ExampleProcess_Cleanup() {

@@ -131,6 +131,11 @@ func FromNetConn(c net.Conn, info Info) *Process {
 	}
 }
 
+// FromNamedPipesOrExit attempts to connect to a process through a named pipe
+// using an input pipe path and output pipe path. It calls DefaultExitFn if an
+// error occurs.
+//
+// Refer to FromNamedPipes for more information.
 func FromNamedPipesOrExit(inputPipePath string, outputPipePath string, info Info) *Process {
 	p, err := FromNamedPipes(inputPipePath, outputPipePath, info)
 	if err != nil {
@@ -140,6 +145,8 @@ func FromNamedPipesOrExit(inputPipePath string, outputPipePath string, info Info
 	return p
 }
 
+// FromNamedPipesOrExit attempts to connect to a process through a named pipe
+// using an input pipe path and output pipe path, returning a *Process.
 func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Process, error) {
 	input, err := os.OpenFile(inputPipePath, os.O_WRONLY|syscall.O_NONBLOCK, os.ModeNamedPipe)
 	if err != nil {
@@ -155,6 +162,9 @@ func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Pr
 	return FromOSFiles(input, output, info), nil
 }
 
+// FromOSFiles attempts to connect to a process by using the specified input
+// and output *os.File, returning a *Process. For example, input could be
+// os.Stdin and output could be os.Stdout.
 func FromOSFiles(input *os.File, output *os.File, info Info) *Process {
 	return &Process{
 		input:  input,
