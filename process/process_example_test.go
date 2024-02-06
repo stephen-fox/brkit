@@ -87,6 +87,23 @@ func ExampleProcess_Cleanup() {
 	defer proc.Cleanup()
 }
 
+func ExampleProcess_Read() {
+	proc, err := Exec(exec.Command("cat", "/etc/passwd"), X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Cleanup()
+
+	b := make([]byte, 1024)
+
+	n, err := proc.Read(b)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Printf("read %d bytes: %s", n, b[0:n])
+}
+
 func ExampleProcess_WriteLine() {
 	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {

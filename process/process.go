@@ -3,6 +3,7 @@ package process
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
@@ -255,6 +256,37 @@ func (o Process) HasExited() bool {
 	o.rwMu.RLock()
 	defer o.rwMu.RUnlock()
 	return o.exited.exited
+}
+
+// ReadOrExit calls Process.Read and calls DefaultExitFn if an error occurs.
+func (o Process) ReadOrExit(b []byte) int {
+	n, err := o.Read(b)
+	if err != nil {
+		DefaultExitFn(err)
+	}
+	return n
+}
+
+// Read reads from the processes output, implementing the io.Reader interface.
+func (o Process) Read(b []byte) (int, error) {
+	n, err := o.output.Read(b)
+
+	if o.logger != nil {
+		var hexDump string
+		if n > 0 {
+			hexDump = hex.Dump(b[0:n])
+		}
+		if len(hexDump) <= 1 {
+			// hex.Dump always adds a newline.
+			hexDump = "<empty-value>"
+		} else {
+			hexDump = hexDump[0 : len(hexDump)-1]
+		}
+
+		o.logger.Println("Read read:\n" + hexDump)
+	}
+
+	return n, err
 }
 
 // ReadLineOrExit calls Process.ReadLine, subsequently calling DefaultExitFn
