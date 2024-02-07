@@ -14,6 +14,7 @@ import (
 // This code is heavily based on work by D3Ext:
 // https://gist.github.com/D3Ext/845bdc6a22bbdd50fe409d78b7d59b96
 type DeBruijn struct {
+	// OptLogger logs the pattern string if specified.
 	OptLogger *log.Logger
 	t         int
 	p         int
@@ -27,14 +28,17 @@ const (
 	deBruijnCharsLen = len(deBruijnChars)
 )
 
+// WriteToNOrExit calls WriteToN and calls DefaultExitFn if an error occurs.
 func (o *DeBruijn) WriteToNOrExit(w io.Writer, n int) {
 	err := o.WriteToN(w, n)
 	if err != nil {
-		DefaultExitFn(fmt.Errorf("failed to write pattern string number %d of size %d - %w",
+		DefaultExitFn(fmt.Errorf("pattern.debruijn: failed to write pattern string number %d of size %d - %w",
 			o.numCalls, n, err))
 	}
 }
 
+// WriteToN writes n bytes of a de Bruijn pattern string to w.
+// Subsequent calls to WriteToN will resume the de Bruijn sequence.
 func (o *DeBruijn) WriteToN(w io.Writer, n int) error {
 	if n <= 0 {
 		return errors.New("n is less than or equal to zero")
