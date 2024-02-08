@@ -10,24 +10,51 @@ import (
 	"reflect"
 )
 
+// FieldOrder specifies how a struct's fields should be ordered.
 type FieldOrder int
 
 const (
+	// GoFieldOrder orders fields in the order that they
+	// were defined.
 	GoFieldOrder FieldOrder = iota
+
+	// ReverseFieldOrder orders the fields in the opposite
+	// order that they were defined in.
 	ReverseFieldOrder
 )
 
+// Byter is the interface that specifies how an object should
+// be converted to bytes.
+//
+// Refer to the ToBytes function for more information.
 type Byter interface {
+	// ToBytes specifies how the object should be converted
+	// to bytes for the given binary.ByteOrder.
 	ToBytes(binary.ByteOrder) []byte
 }
 
+// FieldInfo provides information about a field.
 type FieldInfo struct {
+	// Index is the zero-based index number of the field.
 	Index int
-	Name  string
-	Type  string
+
+	// Name is the name of the field.
+	Name string
+
+	// Type is the string representation of the Go datatype.
+	Type string
+
+	// Value is the value of the field after it has been
+	// converted to bytes.
 	Value []byte
 }
 
+// FieldWriterFn returns a function that writes a field's value
+// to the specified io.Writer.
+//
+// An optional log.Logger can be provided as well. If non-nil,
+// information about the field including its hexdump-style
+// value will be written to the log.Logger.
 func FieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error {
 	return func(f FieldInfo) error {
 		if len(optLogger) > 0 {
@@ -41,7 +68,7 @@ func FieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error 
 				hexDump = hexDump[0 : len(hexDump)-1]
 			}
 
-			logger.Printf("writing field: %d | name: %q | type: %s | value:\n%s",
+			logger.Printf("bstruct.fieldwriterfn - field: %d | name: %q | type: %s | value:\n%s",
 				f.Index, f.Name, f.Type, hexDump)
 		}
 
@@ -50,6 +77,8 @@ func FieldWriterFn(w io.Writer, optLogger ...*log.Logger) func(FieldInfo) error 
 	}
 }
 
+// ToBytesX86OrExit calls ToBytesX86. It calls DefaultExitFn if
+// an error occurs.
 func ToBytesX86OrExit(fieldFn func(FieldInfo) error, s interface{}) {
 	err := ToBytesX86(fieldFn, s)
 	if err != nil {
@@ -57,6 +86,9 @@ func ToBytesX86OrExit(fieldFn func(FieldInfo) error, s interface{}) {
 	}
 }
 
+// ToBytesX86 converts struct s to bytes using fieldFn for a x86 CPU.
+//
+// Refer to ToBytes for more information.
 func ToBytesX86(fieldFn func(FieldInfo) error, s interface{}) error {
 	err := ToBytes(binary.LittleEndian, GoFieldOrder, fieldFn, s)
 	if err != nil {
@@ -66,6 +98,7 @@ func ToBytesX86(fieldFn func(FieldInfo) error, s interface{}) error {
 	return nil
 }
 
+// ToBytesOrExit calls ToBytes. It calls DefaultExitFn if an error occurs.
 func ToBytesOrExit(bo binary.ByteOrder, fo FieldOrder, fieldFn func(FieldInfo) error, s interface{}) {
 	err := ToBytes(bo, fo, fieldFn, s)
 	if err != nil {
@@ -73,6 +106,12 @@ func ToBytesOrExit(bo binary.ByteOrder, fo FieldOrder, fieldFn func(FieldInfo) e
 	}
 }
 
+// ToBytes converts struct s to bytes. Each field's value is converted
+// according to the specified binary.ByteOrder. Fields are passed to
+// fieldFn according to the specified FieldOrder.
+//
+// If a field in struct s implements the Byter interface, its ToBytes
+// method is used to convert the field value to bytes.
 func ToBytes(bo binary.ByteOrder, fo FieldOrder, fieldFn func(FieldInfo) error, s interface{}) error {
 	if bo == nil {
 		return errors.New("binary order is nil")
