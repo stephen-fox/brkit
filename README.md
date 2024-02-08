@@ -7,10 +7,8 @@
 
 Package brkit provides functionality for binary research.
 
-## Table of contents
-[[_TOC_]]
-
 ## Use case
+
 This library was originally developed as a collection of small command line
 utilities. It eventually expanded into a library that mimics the functionality
 of Python `pwntools`. I developed this library to further my understanding of
@@ -19,11 +17,11 @@ goal of this project is to help with solving hacking CTF challenges. The API is
 open-minded in the sense it could be used (responsibly) for non-CTF work.
 
 ## APIs
+
 brkit is broken into several sub-packages, each representing a distinct set
-of functionality. To help with scripting, a set of proxy APIs are provided which
-simply exit the program when an error occurs. These API names end with the
-suffix `OrExit` to indicate this behavior. Essentially, they call the
-corresponding API, check if an error occurred, and call `log.Fatalln`.
+of functionality. To help with scripting, a set of proxy APIs are provided
+which exit the program when an error occurs. These API names end with the
+suffix `OrExit` to indicate this behavior.
 
 The following subsections outline the various sub-packages and their usage.
 Please refer to the GoDoc documentation for detailed explanations and
@@ -34,15 +32,17 @@ Package conv provides functionality for converting binary-related data from one
 format to another.
 
 #### `memory`
+
 Package memory provides functionality for reading and writing memory.
 
 This library is useful for constructing memory leaks and writes, as well as
 tracking memory addresses and pointers programmatically.
 
 ###### `AddressTable`
-The `AddressTable` struct provides a small API for organizing memory offsets in
-different contexts. For example, it can be used to track glibc symbol offsets
-for different machines:
+
+The `AddressTable` struct provides a small API for organizing memory offsets
+in different contexts. For example, it can be used to track glibc symbol
+offsets for different machines:
 
 ```go
 func ExampleAddressTable() {
@@ -65,6 +65,7 @@ func ExampleAddressTable() {
 ```
 
 ###### `Pointer`
+
 The `Pointer` struct is used for tracking variables that point to memory
 addresses in a separate software process. It accomplishes this by storing
 the pointed-to address as a []byte in the correct endianness (also known as
@@ -87,6 +88,7 @@ func ExamplePointer_Uint_Math() {
 ```
 
 ###### Format string exploitation
+
 This library also provides functions for automating the creation of format
 string attacks, primarily through the direct parameter access (DPA) feature.
 The `SetupFormatStringLeakViaDPA` function accomplishes this by first leaking
@@ -147,6 +149,7 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 ```
 
 #### `process`
+
 Package process provides functionality for working with running
 software processes.
 
@@ -194,27 +197,32 @@ func ExampleDial() {
 }
 ```
 
-These functions accept a `Info` struct which stores information about the
-process, such as its bits. These can be instantiated by specifying their field
-values, or by calling the constructor-like helper functions.
+These functions accept an `Info` struct which stores information about the
+process, such as its bits. These can be instantiated by specifying their
+field values, or by calling the constructor-like helper functions.
 
 ## Command line utilities
+
 Several command line utilities are included to aid in binary research efforts.
 
 #### `fromhex`
+
 Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
 the underlying binary data into another encoding.
 
 #### `pattern`
+
 Finds repeating patterns in strings. This is useful for locating
 where an input string begins to overwrite program state (e.g., stack-based
 buffer overflows).
 
 #### `stringer`
+
 A string creation and manipulation tool capable of creating pattern strings and
 arbitrary binary data.
 
 ## Installing command line utilities
+
 Since this is a Go (Golang) project, the preferred method of installation
 is using `go install`. This automates downloading and building Go applications
 from source in a secure manner. By default, this copies applications
@@ -231,6 +239,7 @@ go install gitlab.com/stephen-fox/brkit/cmd/<app-name>@latest
 ```
 
 ## Special thanks
+
 Several of the APIs in this library (namely the `process` sub-package) are
 heavily inspired by:
 
