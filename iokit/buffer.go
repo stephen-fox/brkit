@@ -377,7 +377,7 @@ func (o *Buffer) Write(b []byte) (int, error) {
 		o.Buf = bytes.NewBuffer(nil)
 	}
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		hexDump := hex.Dump(b)
 		if len(hexDump) <= 1 {
 			// hex.Dump always adds a newline.
@@ -408,7 +408,7 @@ func (o *Buffer) WriteString(s string) (int, error) {
 		o.Buf = bytes.NewBuffer(nil)
 	}
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		hexDump := hex.Dump([]byte(s))
 		if len(hexDump) <= 1 {
 			// hex.Dump always adds a newline.
@@ -437,7 +437,7 @@ func (o *Buffer) WriteByte(b byte) error {
 		o.Buf = bytes.NewBuffer(nil)
 	}
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		hexDump := hex.Dump([]byte{b})
 		if len(hexDump) <= 1 {
 			// hex.Dump always adds a newline.
@@ -468,7 +468,7 @@ func (o *Buffer) WriteRune(r rune) (int, error) {
 		o.Buf = bytes.NewBuffer(nil)
 	}
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		b := make([]byte, utf8.RuneLen(r))
 
 		utf8.EncodeRune(b, r)
@@ -506,7 +506,7 @@ func (o *Buffer) WriteTo(w io.Writer) (int64, error) {
 	var hexDumpOutput *bytes.Buffer
 	var hexDumper io.WriteCloser
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		hexDumpOutput = bytes.NewBuffer(nil)
 		hexDumper = hex.Dumper(hexDumpOutput)
 
@@ -515,7 +515,7 @@ func (o *Buffer) WriteTo(w io.Writer) (int64, error) {
 
 	n, err := o.Buf.WriteTo(w)
 
-	if o.OptLoggerR != nil {
+	if o.OptLoggerW != nil {
 		// Flush remaining bytes to the hex dump buffer.
 		_ = hexDumper.Close()
 
