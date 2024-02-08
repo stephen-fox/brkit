@@ -9,6 +9,30 @@ import (
 	"os"
 )
 
+func ExampleToBytesX86() {
+	type example struct {
+		Counter  uint16
+		SomePtr  uint32
+		Register uint32
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	err := ToBytesX86(FieldWriterFn(buf), example{
+		Counter:  666,
+		SomePtr:  0xc0ded00d,
+		Register: 0xfabfabdd,
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Printf("0x%x", buf.Bytes())
+
+	// Output:
+	// 0x9a020dd0dec0ddabbffa
+}
+
 func ExampleToBytes() {
 	type example struct {
 		Counter  uint16
