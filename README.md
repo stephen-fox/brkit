@@ -187,7 +187,7 @@ If the process has a TCP listener, it can be connected to like so:
 
 ```go
 func ExampleDial() {
-	proc, err := Dial("tcp4", "192.168.1.2:8080", process.X86_64Info())
+	proc, err := process.Dial("tcp4", "192.168.1.2:8080", process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
