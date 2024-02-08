@@ -27,9 +27,49 @@ The following subsections outline the various sub-packages and their usage.
 Please refer to the GoDoc documentation for detailed explanations and
 usage examples.
 
+#### `bstruct`
+
+Package bstruct provides functionality for converting data structures
+to binary.
+
+The following example demonstrates how to convert a struct to binary data for
+use on a x86 CPU:
+
+```go
+func ExampleToBytesX86() {
+	type example struct {
+		Counter  uint16
+		SomePtr  uint32
+		Register uint32
+	}
+
+	buf := bytes.NewBuffer(nil)
+
+	err := bstruct.ToBytesX86(FieldWriterFn(buf), example{
+		Counter:  666,
+		SomePtr:  0xc0ded00d,
+		Register: 0xfabfabdd,
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Printf("0x%x", buf.Bytes())
+
+	// Output:
+	// 0x9a020dd0dec0ddabbffa
+}
+```
+
 #### `conv`
-Package conv provides functionality for converting binary-related data from one
-format to another.
+
+Package conv provides functionality for converting binary-related data from
+one format to another.
+
+#### `iokit`
+
+Package iokit provides additional input-output functionality that can be
+useful when developing exploits.
 
 #### `memory`
 
@@ -145,6 +185,38 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+```
+
+#### `pattern`
+
+Package pattern provides functionality for generating pattern strings.
+
+The following example demonstrates how to generate a de Bruijn pattern string:
+
+```go
+func ExampleDeBruijn_WriteToN() {
+	db := &pattern.DeBruijn{}
+
+	err := db.WriteToN(os.Stdout, 16)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	os.Stdout.WriteString("\n")
+	err = db.WriteToN(os.Stdout, 16)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	os.Stdout.WriteString("\n")
+	err = db.WriteToN(os.Stdout, 16)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Output:
+	// aaaabaaacaaadaaa
+	// eaaafaaagaaahaaa
+	// iaaajaaakaaalaaa
 }
 ```
 
