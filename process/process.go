@@ -285,7 +285,7 @@ func (o Process) Read(b []byte) (int, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("Read read:\n" + hexDump)
+		o.logger.Println("process: Read:\n" + hexDump)
 	}
 
 	return n, err
@@ -329,7 +329,7 @@ func (o Process) ReadFrom(r io.Reader) (int64, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("process: read from:\n" + hexDump)
+		o.logger.Println("process: ReadFrom:\n" + hexDump)
 	}
 
 	if errors.Is(err, io.EOF) {
@@ -372,7 +372,18 @@ func (o Process) ReadUntilChar(delim byte) ([]byte, error) {
 		return nil, err
 	}
 	if o.logger != nil {
-		o.logger.Printf("ReadUntilChar read: '%s'", p)
+		var hexDump string
+		if len(p) > 0 {
+			hexDump = hex.Dump(p)
+		}
+		if len(hexDump) <= 1 {
+			// hex.Dump always adds a newline.
+			hexDump = "<empty-value>"
+		} else {
+			hexDump = hexDump[0 : len(hexDump)-1]
+		}
+
+		o.logger.Println("process: ReadUntilChar:\n" + hexDump)
 	}
 	return p, nil
 }
@@ -401,30 +412,35 @@ func (o Process) ReadUntilOrExit(p []byte) []byte {
 // specified []byte is found, returning the data read, including the
 // specified []byte.
 func (o Process) ReadUntil(p []byte) ([]byte, error) {
-	if o.logger != nil {
-		o.logger.Printf("ReadUntil: 0x%x", p)
-	}
-
-	buff := bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
 	for {
 		b, err := o.ReadByte()
 		if err != nil {
 			return nil, err
 		}
 
-		buff.WriteByte(b)
-		if o.logger != nil {
-			o.logger.Printf("ReadUntil buff is now: %s", buff.Bytes())
+		err = buf.WriteByte(b)
+		if err != nil {
+			return nil, err
 		}
+
 		// TODO: Maybe search by suffix?
-		if bytes.Contains(buff.Bytes(), p) {
+		if bytes.Contains(buf.Bytes(), p) {
 			if o.logger != nil {
-				o.logger.Printf("ReadUntil buff contains target")
+				var hexDump string
+				if len(p) > 0 {
+					hexDump = hex.Dump(buf.Bytes())
+				}
+				if len(hexDump) <= 1 {
+					// hex.Dump always adds a newline.
+					hexDump = "<empty-value>"
+				} else {
+					hexDump = hexDump[0 : len(hexDump)-1]
+				}
+
+				o.logger.Println("process: ReadUntil:\n" + hexDump)
 			}
-			return buff.Bytes(), nil
-		}
-		if o.logger != nil {
-			o.logger.Printf("ReadUntil buff does not contain target")
+			return buf.Bytes(), nil
 		}
 	}
 }
@@ -463,7 +479,18 @@ func (o Process) WriteOrExit(p []byte) {
 // process' input.
 func (o Process) Write(p []byte) (int, error) {
 	if o.logger != nil {
-		o.logger.Printf("writing 0x%x", p)
+		var hexDump string
+		if len(p) > 0 {
+			hexDump = hex.Dump(p)
+		}
+		if len(hexDump) <= 1 {
+			// hex.Dump always adds a newline.
+			hexDump = "<empty-value>"
+		} else {
+			hexDump = hexDump[0 : len(hexDump)-1]
+		}
+
+		o.logger.Println("process: Write:\n" + hexDump)
 	}
 
 	n, err := o.input.Write(p)
