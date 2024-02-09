@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"syscall"
 )
@@ -456,7 +457,15 @@ func (o *Process) Interactive() error {
 	}()
 
 	go func() {
-		_, err := io.Copy(o.input, os.Stdin)
+		var stdin io.Reader = os.Stdin
+		if runtime.GOOS == "windows" && os.Getenv("BRKIT_WINDOWS_INTERACTIVE") != "false" {
+			// Super hack for Windows sending CRLF.
+			stdin = &windowsNewlineSkipper{
+				r: os.Stdin,
+			}
+		}
+
+		_, err := io.Copy(o.input, stdin)
 		if err != nil {
 			done <- fmt.Errorf("failed to copy stdin to input writer - %w", err)
 		} else {
@@ -465,4 +474,27 @@ func (o *Process) Interactive() error {
 	}()
 
 	return <-done
+}
+
+type windowsNewlineSkipper struct {
+	r io.Reader
+}
+
+func (o *windowsNewlineSkipper) Read(b []byte) (int, error) {
+	n, err := o.r.Read(b)
+	if n > 0 {
+		index := bytes.Index(b[0:n], []byte{'\r', '\n'})
+		if index > -1 {
+			// a b c d e f \r \n A B C
+			// 0 1 2 3 4 5 6  7  8 9 10
+			//
+			// copy(b[6:], b[7:])
+			// a b c d e f \n A B C
+			// 0 1 2 3 4 5 6  7 8 9 10
+			copy(b[index:], b[index+1:])
+			n--
+		}
+	}
+
+	return n, err
 }
