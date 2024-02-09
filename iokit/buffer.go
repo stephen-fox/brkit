@@ -242,13 +242,13 @@ func (o *Buffer) ReadBytes(delim byte) (line []byte, err error) {
 }
 
 // ReadFromOrExit calls ReadFrom. It calls DefaultExitFn if an error occurs.
-func (o *Buffer) ReadFromOrExit(r io.Reader) (int64, error) {
+func (o *Buffer) ReadFromOrExit(r io.Reader) int64 {
 	n, err := o.ReadFrom(r)
 	if err != nil {
-		DefaultExitFn(fmt.Errorf("iokit.buffer: failed to read - %w", err))
+		DefaultExitFn(fmt.Errorf("iokit.buffer: failed to read from - %w", err))
 	}
 
-	return n, nil
+	return n
 }
 
 // ReadFrom calls Buf.ReadFrom.
