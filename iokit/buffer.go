@@ -168,13 +168,13 @@ func (o *Buffer) Read(b []byte) (int, error) {
 }
 
 // ReadByteOrExit calls ReadByte. It calls DefaultExitFn if an error occurs.
-func (o *Buffer) ReadByteOrExit() (byte, error) {
+func (o *Buffer) ReadByteOrExit() byte {
 	b, err := o.ReadByte()
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("iokit.buffer: failed to read byte - %w", err))
 	}
 
-	return b, nil
+	return b
 }
 
 // ReadByte calls Buf.ReadByte.
@@ -205,13 +205,13 @@ func (o *Buffer) ReadByte() (byte, error) {
 }
 
 // ReadBytesOrExit calls ReadBytes. It calls DefaultExitFn if an error occurs.
-func (o *Buffer) ReadBytesOrExit(delim byte) (line []byte, err error) {
-	line, err = o.ReadBytes(delim)
+func (o *Buffer) ReadBytesOrExit(delim byte) []byte {
+	line, err := o.ReadBytes(delim)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("iokit.buffer: failed to read bytes - %w", err))
 	}
 
-	return line, nil
+	return line
 }
 
 // ReadBytes calls Buf.ReadBytes.
@@ -329,13 +329,13 @@ func (o *Buffer) ReadRune() (r rune, size int, err error) {
 }
 
 // ReadStringOrExit calls ReadString. It calls DefaultExitFn if an error occurs.
-func (o *Buffer) ReadStringOrExit(delim byte) (line string, err error) {
-	line, err = o.ReadString(delim)
+func (o *Buffer) ReadStringOrExit(delim byte) string {
+	line, err := o.ReadString(delim)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("iokit.buffer: failed to read string - %w", err))
 	}
 
-	return line, nil
+	return line
 }
 
 // ReadString calls Buf.ReadString.
