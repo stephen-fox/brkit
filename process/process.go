@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -287,6 +288,53 @@ func (o Process) Read(b []byte) (int, error) {
 		o.logger.Println("Read read:\n" + hexDump)
 	}
 
+	return n, err
+}
+
+// ReadFromOrExit calls ReadFrom. It calls DefaultExitFn if an error occurs.
+func (o Process) ReadFromOrExit(r io.Reader) int64 {
+	n, err := o.ReadFrom(r)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("process: failed to read from - %w", err))
+	}
+
+	return n
+}
+
+// ReadFrom reads data from r until EOF. The return value n is the number of
+// bytes read. Any error except io.EOF encountered during the read is
+// also returned.
+func (o Process) ReadFrom(r io.Reader) (int64, error) {
+	var hexDumpOutput *bytes.Buffer
+	var hexDumper io.WriteCloser
+
+	if o.logger != nil {
+		hexDumpOutput = bytes.NewBuffer(nil)
+		hexDumper = hex.Dumper(hexDumpOutput)
+
+		r = io.TeeReader(r, hexDumper)
+	}
+
+	n, err := io.Copy(o.input, r)
+
+	if o.logger != nil {
+		// Flush remaining bytes to the hex dump buffer.
+		_ = hexDumper.Close()
+
+		hexDump := hexDumpOutput.String()
+		if len(hexDump) <= 1 {
+			// hex.Dump always adds a newline.
+			hexDump = "<empty-value>"
+		} else {
+			hexDump = hexDump[0 : len(hexDump)-1]
+		}
+
+		o.logger.Println("process: read from:\n" + hexDump)
+	}
+
+	if errors.Is(err, io.EOF) {
+		return n, nil
+	}
 	return n, err
 }
 
