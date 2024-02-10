@@ -2,9 +2,9 @@ package process
 
 import (
 	"crypto/tls"
+	"flag"
 	"log"
 	"net"
-	"os"
 	"os/exec"
 )
 
@@ -73,8 +73,16 @@ func ExampleFromNamedPipes() {
 	proc.Write([]byte("hello world"))
 }
 
-func ExampleFromOSFiles() {
-	proc := FromOSFiles(os.Stdin, os.Stdout, X86_64Info())
+func ExampleFromIO() {
+	flag.Parse()
+	sshHost := flag.Arg(1)
+	inputPipePath := flag.Arg(2)
+	outputPipePath := flag.Arg(3)
+
+	sshInput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath), X86_64Info())
+	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
+
+	proc := FromIO(sshInput, sshOutput, X86_64Info())
 
 	proc.Write([]byte("hello world"))
 }

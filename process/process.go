@@ -162,13 +162,15 @@ func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Pr
 		return nil, fmt.Errorf("failed to open output pipe - %w", err)
 	}
 
-	return FromOSFiles(input, output, info), nil
+	return FromIO(input, output, info), nil
 }
 
-// FromOSFiles attempts to connect to a process by using the specified input
-// and output *os.File, returning a *Process. For example, input could be
-// os.Stdin and output could be os.Stdout.
-func FromOSFiles(input *os.File, output *os.File, info Info) *Process {
+// FromIO attempts to connect to a process by using the specified input
+// and output, returning a *Process. For example, input and output can
+// be two different named pipes accessed over ssh connections (refer to
+// Go Doc for example).
+func FromIO(input io.WriteCloser, output io.ReadCloser, info Info) *Process {
+	// TODO investigate using this function in other FromFunctions
 	return &Process{
 		input:  input,
 		output: bufio.NewReader(output),
@@ -224,6 +226,10 @@ type Process struct {
 	exited exitInfo
 	info   Info
 	logger *log.Logger
+}
+
+func (o Process) Close() error {
+	return o.Cleanup()
 }
 
 // Cleanup, generally speaking, releases any resources associated with
