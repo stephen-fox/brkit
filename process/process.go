@@ -228,7 +228,7 @@ type Process struct {
 	logger *log.Logger
 }
 
-func (o Process) Close() error {
+func (o *Process) Close() error {
 	return o.Cleanup()
 }
 
@@ -238,18 +238,18 @@ func (o Process) Close() error {
 // will be closed.
 //
 // The Process is no longer usable once this method is invoked.
-func (o Process) Cleanup() error {
+func (o *Process) Cleanup() error {
 	return o.done()
 }
 
 // Bits returns the number of bits for the process' platform.
-func (o Process) Bits() int {
+func (o *Process) Bits() int {
 	return o.info.PlatformBits
 }
 
 // PointerSizeBytes returns the size of a pointer for the
 // process' platform in bytes.
-func (o Process) PointerSizeBytes() int {
+func (o *Process) PointerSizeBytes() int {
 	return o.info.PtrSizeBytes
 }
 
@@ -260,14 +260,14 @@ func (o Process) PointerSizeBytes() int {
 // process involves writing and reading data to the underlying
 // network socket, which is dependent on the implementation of the
 // remote process.
-func (o Process) HasExited() bool {
+func (o *Process) HasExited() bool {
 	o.rwMu.RLock()
 	defer o.rwMu.RUnlock()
 	return o.exited.exited
 }
 
 // ReadOrExit calls Process.Read and calls DefaultExitFn if an error occurs.
-func (o Process) ReadOrExit(b []byte) int {
+func (o *Process) ReadOrExit(b []byte) int {
 	n, err := o.Read(b)
 	if err != nil {
 		DefaultExitFn(err)
@@ -276,7 +276,7 @@ func (o Process) ReadOrExit(b []byte) int {
 }
 
 // Read reads from the processes output, implementing the io.Reader interface.
-func (o Process) Read(b []byte) (int, error) {
+func (o *Process) Read(b []byte) (int, error) {
 	n, err := o.output.Read(b)
 
 	if o.logger != nil {
@@ -298,7 +298,7 @@ func (o Process) Read(b []byte) (int, error) {
 }
 
 // ReadFromOrExit calls ReadFrom. It calls DefaultExitFn if an error occurs.
-func (o Process) ReadFromOrExit(r io.Reader) int64 {
+func (o *Process) ReadFromOrExit(r io.Reader) int64 {
 	n, err := o.ReadFrom(r)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("process: failed to read from - %w", err))
@@ -310,7 +310,7 @@ func (o Process) ReadFromOrExit(r io.Reader) int64 {
 // ReadFrom reads data from r until EOF. The return value n is the number of
 // bytes read. Any error except io.EOF encountered during the read is
 // also returned.
-func (o Process) ReadFrom(r io.Reader) (int64, error) {
+func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 	var hexDumpOutput *bytes.Buffer
 	var hexDumper io.WriteCloser
 
@@ -346,7 +346,7 @@ func (o Process) ReadFrom(r io.Reader) (int64, error) {
 
 // ReadLineOrExit calls Process.ReadLine, subsequently calling DefaultExitFn
 // if an error occurs.
-func (o Process) ReadLineOrExit() []byte {
+func (o *Process) ReadLineOrExit() []byte {
 	p, err := o.ReadLine()
 	if err != nil {
 		DefaultExitFn(err)
@@ -356,13 +356,13 @@ func (o Process) ReadLineOrExit() []byte {
 
 // ReadLine blocks and attempts to read from the process' output until
 // a new line character is found.
-func (o Process) ReadLine() ([]byte, error) {
+func (o *Process) ReadLine() ([]byte, error) {
 	return o.ReadUntilChar('\n')
 }
 
 // ReadUntilCharOrExit calls Process.ReadUntilChar, subsequently calling
 // DefaultExitFn if an error occurs.
-func (o Process) ReadUntilCharOrExit(delim byte) []byte {
+func (o *Process) ReadUntilCharOrExit(delim byte) []byte {
 	p, err := o.ReadUntilChar(delim)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to read from process until 0x%x - %w", delim, err))
@@ -372,7 +372,7 @@ func (o Process) ReadUntilCharOrExit(delim byte) []byte {
 
 // ReadUntilChar blocks and attempts to read from the process' output until
 // the specified character is found.
-func (o Process) ReadUntilChar(delim byte) ([]byte, error) {
+func (o *Process) ReadUntilChar(delim byte) ([]byte, error) {
 	p, err := o.output.ReadBytes(delim)
 	if err != nil {
 		return nil, err
@@ -396,7 +396,7 @@ func (o Process) ReadUntilChar(delim byte) ([]byte, error) {
 
 // ReadByteOrExit calls Process.ReadByte, subsequently calling DefaultExitFn
 // if an error occurs.
-func (o Process) ReadByteOrExit() byte {
+func (o *Process) ReadByteOrExit() byte {
 	b, err := o.ReadByte()
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to read one byte from process - %w", err))
@@ -406,7 +406,7 @@ func (o Process) ReadByteOrExit() byte {
 
 // ReadUntilOrExit calls Process.ReadUntil, subsequently calling DefaultExitFn
 // if an error occurs.
-func (o Process) ReadUntilOrExit(p []byte) []byte {
+func (o *Process) ReadUntilOrExit(p []byte) []byte {
 	res, err := o.ReadUntil(p)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to read from process until 0x%x - %w", p, err))
@@ -417,7 +417,7 @@ func (o Process) ReadUntilOrExit(p []byte) []byte {
 // ReadUntil blocks and attempts to read from the process' output until the
 // specified []byte is found, returning the data read, including the
 // specified []byte.
-func (o Process) ReadUntil(p []byte) ([]byte, error) {
+func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
 	for {
 		b, err := o.ReadByte()
@@ -452,13 +452,13 @@ func (o Process) ReadUntil(p []byte) ([]byte, error) {
 }
 
 // ReadByte blocks and attempts to read one byte from the process' output.
-func (o Process) ReadByte() (byte, error) {
+func (o *Process) ReadByte() (byte, error) {
 	return o.output.ReadByte()
 }
 
 // WriteLineOrExit calls Process.WriteLine, subsequently calling DefaultExitFn
 // if an error occurs.
-func (o Process) WriteLineOrExit(p []byte) {
+func (o *Process) WriteLineOrExit(p []byte) {
 	err := o.WriteLine(p)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to write line to process - %w", err))
@@ -467,14 +467,14 @@ func (o Process) WriteLineOrExit(p []byte) {
 
 // WriteLine appends a new line character to the specified []byte
 // and writes it to the process' input.
-func (o Process) WriteLine(p []byte) error {
+func (o *Process) WriteLine(p []byte) error {
 	_, err := o.input.Write(append(p, '\n'))
 	return err
 }
 
 // WriteOrExit calls Process.Write, subsequently calling DefaultExitFn
 // if an error occurs.
-func (o Process) WriteOrExit(p []byte) {
+func (o *Process) WriteOrExit(p []byte) {
 	_, err := o.input.Write(p)
 	if err != nil {
 		DefaultExitFn(err)
@@ -483,7 +483,7 @@ func (o Process) WriteOrExit(p []byte) {
 
 // Write blocks and attempts to write the specified []byte to the
 // process' input.
-func (o Process) Write(p []byte) (int, error) {
+func (o *Process) Write(p []byte) (int, error) {
 	if o.logger != nil {
 		var hexDump string
 		if len(p) > 0 {
