@@ -61,7 +61,7 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	}
 
 	waitDone := make(chan struct{})
-	proc.done = func() error {
+	proc.close = func() error {
 		proc.rwMu.RLock()
 		exitedCopy := proc.exited
 		proc.rwMu.RUnlock()
@@ -128,7 +128,7 @@ func FromNetConn(c net.Conn, info Info) *Process {
 		output: bufio.NewReader(c),
 		rwMu:   &sync.RWMutex{},
 		info:   info,
-		done: func() error {
+		close: func() error {
 			return c.Close()
 		},
 	}
@@ -176,7 +176,7 @@ func FromIO(input io.WriteCloser, output io.ReadCloser, info Info) *Process {
 		output: bufio.NewReader(output),
 		rwMu:   &sync.RWMutex{},
 		info:   info,
-		done: func() error {
+		close: func() error {
 			_ = input.Close()
 			_ = output.Close()
 			return nil
@@ -221,7 +221,7 @@ type Info struct {
 type Process struct {
 	input   io.Writer
 	output  *bufio.Reader
-	done    func() error
+	close   func() error
 	rwMu    *sync.RWMutex
 	exited  exitInfo
 	info    Info
@@ -235,7 +235,7 @@ type Process struct {
 //
 // The Process is no longer usable once this method is invoked.
 func (o *Process) Close() error {
-	return o.done()
+	return o.close()
 }
 
 // Bits returns the number of bits for the process' platform.
