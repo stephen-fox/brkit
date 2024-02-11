@@ -42,14 +42,11 @@ func ExampleToBytesX86() {
 
 	buf := bytes.NewBuffer(nil)
 
-	err := bstruct.ToBytesX86(FieldWriterFn(buf), example{
+	bstruct.ToBytesX86OrExit(FieldWriterFn(buf), example{
 		Counter:  666,
 		SomePtr:  0xc0ded00d,
 		Register: 0xfabfabdd,
 	})
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	fmt.Printf("0x%x", buf.Bytes())
 
@@ -138,13 +135,10 @@ This allows for format string exploitation automation:
 
 ```go
 func ExampleSetupFormatStringLeakViaDPA() {
-	leaker, err := memory.SetupFormatStringLeakViaDPA(DPAFormatStringConfig{
+	leaker := memory.SetupFormatStringLeakViaDPAOrExit(DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	pm := memory.PointerMakerForX86_64()
 
@@ -161,24 +155,18 @@ single bytes:
 
 ```go
 func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
-	writer, err := memory.SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
+	writer := memory.SetupDPAFormatStringWriterOrExit(DPAFormatStringWriterConfig{
 		MaxWrite:  999,
 		DPAConfig: DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
 			MaxNumParams: 200,
 		},
 	})
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 	pm := memory.PointerMakerForX86_32()
 
 	// Set the lower four bytes to 1000 (0x03E8).
-	err = writer.WriteLowerFourBytesAt(1000, pm.FromUint(0xdeadbeef))
-	if err != nil {
-		log.Fatalln(err)
-	}
+	writer.WriteLowerFourBytesAtOrExit(1000, pm.FromUint(0xdeadbeef))
 }
 ```
 
@@ -192,20 +180,13 @@ The following example demonstrates how to generate a de Bruijn pattern string:
 func ExampleDeBruijn_WriteToN() {
 	db := &pattern.DeBruijn{}
 
-	err := db.WriteToN(os.Stdout, 16)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	db.WriteToNOrExit(os.Stdout, 16)
 	os.Stdout.WriteString("\n")
-	err = db.WriteToN(os.Stdout, 16)
-	if err != nil {
-		log.Fatalln(err)
-	}
+
+	db.WriteToNOrExit(os.Stdout, 16)
 	os.Stdout.WriteString("\n")
-	err = db.WriteToN(os.Stdout, 16)
-	if err != nil {
-		log.Fatalln(err)
-	}
+
+	db.WriteToNOrExit(os.Stdout, 16)
 
 	// Output:
 	// aaaabaaacaaadaaa
@@ -229,21 +210,12 @@ For example, a new process can exec'ed like so:
 func ExampleExec() {
 	cmd := exec.Command("cat")
 
-	proc, err := process.Exec(cmd, process.X86_64Info())
-	if err != nil {
-		log.Fatalln(err)
-	}
+	proc := process.ExecOrExit(cmd, process.X86_64Info())
 	defer proc.Close()
 
-	err = proc.WriteLine([]byte("hello world"))
-	if err != nil {
-		log.Fatalln(err)
-	}
+	proc.WriteLineOrExit([]byte("hello world"))
 
-	line, err := proc.ReadLine()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	line := proc.ReadLineOrExit()
 
 	log.Printf("%s", line)
 }
@@ -253,10 +225,7 @@ If the process has a TCP listener, it can be connected to like so:
 
 ```go
 func ExampleDial() {
-	proc, err := process.Dial("tcp4", "192.168.1.2:8080", process.X86_64Info())
-	if err != nil {
-		log.Fatalln(err)
-	}
+	proc := process.DialOrExit("tcp4", "192.168.1.2:8080", process.X86_64Info())
 	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
