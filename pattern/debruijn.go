@@ -74,6 +74,7 @@ func (o *DeBruijn) WriteToN(w io.Writer, n int) error {
 	return nil
 }
 
+// TODO: This method is incredibly inefficent and needs some halp.
 func (o *DeBruijn) generate() error {
 	o.n += 4
 
