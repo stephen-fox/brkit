@@ -7,14 +7,11 @@
 
 Package brkit provides functionality for binary research.
 
-## Use case
-
-This library was originally developed as a collection of small command line
-utilities. It eventually expanded into a library that mimics the functionality
-of Python `pwntools`. I developed this library to further my understanding of
-binary-level vulnerability research and exploit development. The overriding
-goal of this project is to help with solving hacking CTF challenges. The API is
-open-minded in the sense it could be used (responsibly) for non-CTF work.
+brkit was originally developed as a collection of small command line utilities.
+It eventually expanded into a library that mimics the functionality of Python
+`pwntools`. The overriding goal of this project is to help solve hacking CTF
+challenges. The API is open-minded in the sense it can be used (responsibly)
+for non-CTF work.
 
 ## APIs
 
@@ -24,7 +21,7 @@ which exit the program when an error occurs. These API names end with the
 suffix `OrExit` to indicate this behavior.
 
 The following subsections outline the various sub-packages and their usage.
-Please refer to the GoDoc documentation for detailed explanations and
+Please refer to the Go doc documentation for detailed explanations and
 usage examples.
 
 #### `bstruct`
@@ -161,9 +158,10 @@ func ExampleSetupFormatStringLeakViaDPA() {
 
 Creation of format string attacks that can write memory is handled in a similar
 fashion. The `SetupDPAFormatStringWriter` function leaks the DPA argument
-number of an oracle string, and then replaces it with a caller-supplied address.
-By abusing certain format specifiers (which is discussed in the GoDoc), callers
-can effectively overwrite the lower four, two, or single bytes:
+number of an oracle string, and then replaces it with a caller-supplied
+address. By abusing certain format specifiers (which is discussed in the
+Go doc), callers can effectively overwrite the lower four, two, or
+single bytes:
 
 ```go
 func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
@@ -317,5 +315,7 @@ heavily inspired by:
 
 - [pwntools](https://github.com/Gallopsled/pwntools)
 - [pwn](https://github.com/Tnze/pwn) by Tnze
+- [D3Ext](https://github.com/D3Ext) for the Go de Bruijn implementation
 
-Thank you!
+Lastly - a huge thank you to [Seung Kang](https://github.com/SeungKang) for
+helping me maintain and improve this code base :3
