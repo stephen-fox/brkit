@@ -72,10 +72,8 @@ useful when developing exploits.
 
 Package memory provides functionality for reading and writing memory.
 
-This library is useful for constructing memory leaks and writes, as well as
-tracking memory addresses and pointers programmatically.
-
-###### `AddressTable`
+The memory library is useful for constructing memory leaks and writes, as well
+as tracking memory addresses and pointers programmatically.
 
 The `AddressTable` struct provides a small API for organizing memory offsets
 in different contexts. For example, it can be used to track glibc symbol
@@ -101,8 +99,6 @@ func ExampleAddressTable() {
 }
 ```
 
-###### `Pointer`
-
 The `Pointer` struct is used for tracking variables that point to memory
 addresses in a separate software process. It accomplishes this by storing
 the pointed-to address as a []byte in the correct endianness (also known as
@@ -124,14 +120,14 @@ func ExamplePointer_Uint_Math() {
 }
 ```
 
-###### Format string exploitation
+#### Format string exploitation
 
-This library also provides functions for automating the creation of format
-string attacks, primarily through the direct parameter access (DPA) feature.
-The `SetupFormatStringLeakViaDPA` function accomplishes this by first leaking
-an oracle string within a newly created format string. This oracle is replaced
-with an address provided by the caller. All of this is done before returning
-to the caller.
+The memory library also provides functions for automating the creation of
+format string attacks, primarily through the direct parameter access (DPA)
+feature. The `SetupFormatStringLeakViaDPA` function accomplishes this by
+first leaking an oracle string within a newly created format string. This
+oracle is replaced with an address provided by the caller. All of this is
+done before returning to the caller.
 
 The `ProcessIO` interface type fulfills a similar role as the `io.ReadWriter`.
 It abstracts a process' input/output and other important attributes. Normally,
