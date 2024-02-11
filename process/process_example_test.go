@@ -1,6 +1,7 @@
 package process
 
 import (
+	"bytes"
 	"crypto/tls"
 	"flag"
 	"log"
@@ -114,6 +115,19 @@ func ExampleProcess_Read() {
 	}
 
 	log.Printf("read %d bytes: %s", n, b[0:n])
+}
+
+func ExampleProcess_ReadFrom() {
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	_, err = proc.ReadFrom(bytes.NewReader([]byte("hello world")))
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func ExampleProcess_WriteLine() {

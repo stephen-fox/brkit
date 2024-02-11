@@ -303,9 +303,9 @@ func (o *Process) ReadFromOrExit(r io.Reader) int64 {
 	return n
 }
 
-// ReadFrom reads data from r until EOF. The return value n is the number of
-// bytes read. Any error except io.EOF encountered during the read is
-// also returned.
+// ReadFrom reads data from r into the process' input until EOF. The return
+// value n is the number of bytes read. Any error except io.EOF encountered
+// during the read is also returned.
 func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 	var hexDumpOutput *bytes.Buffer
 	var hexDumper io.WriteCloser
