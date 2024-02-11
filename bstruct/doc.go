@@ -1,2 +1,3 @@
-// Package bstruct provides functionality for creating binary data structures.
+// Package bstruct provides functionality for converting data structures
+// to binary.
 package bstruct

@@ -1,7 +1,9 @@
 package process
 
 import (
+	"bytes"
 	"crypto/tls"
+	"flag"
 	"log"
 	"net"
 	"os/exec"
@@ -14,7 +16,7 @@ func ExampleExec() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	err = proc.WriteLine([]byte("hello world"))
 	if err != nil {
@@ -34,7 +36,7 @@ func ExampleDial() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -46,6 +48,7 @@ func ExampleFromNetConn() {
 	}
 
 	proc := FromNetConn(c, X86_64Info())
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -59,16 +62,72 @@ func ExampleFromNetConn_FromTLSConnection() {
 	}
 
 	proc := FromNetConn(tlsConn, X86_64Info())
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
 
-func ExampleProcess_Cleanup() {
+func ExampleFromNamedPipes() {
+	proc, err := FromNamedPipes("/path/to/input.fifo", "/path/to/output.fifo", X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	proc.Write([]byte("hello world"))
+}
+
+func ExampleFromIO() {
+	flag.Parse()
+	sshHost := flag.Arg(1)
+	inputPipePath := flag.Arg(2)
+	outputPipePath := flag.Arg(3)
+
+	sshInput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath), X86_64Info())
+	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
+
+	proc := FromIO(sshInput, sshOutput, X86_64Info())
+	defer proc.Close()
+
+	proc.Write([]byte("hello world"))
+}
+
+func ExampleProcess_Close() {
 	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
+}
+
+func ExampleProcess_Read() {
+	proc, err := Exec(exec.Command("cat", "/etc/passwd"), X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	b := make([]byte, 1024)
+
+	n, err := proc.Read(b)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Printf("read %d bytes: %s", n, b[0:n])
+}
+
+func ExampleProcess_ReadFrom() {
+	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	_, err = proc.ReadFrom(bytes.NewReader([]byte("hello world")))
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func ExampleProcess_WriteLine() {
@@ -76,7 +135,7 @@ func ExampleProcess_WriteLine() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -86,7 +145,7 @@ func ExampleProcess_Write() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.Write([]byte("hello world\n"))
 }
@@ -96,7 +155,7 @@ func ExampleProcess_Interactive() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	// Anything typed into stdin will be written to the process' stdin.
 	err = proc.Interactive()

@@ -11,6 +11,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"gitlab.com/stephen-fox/brkit/pattern"
 )
 
 const (
@@ -48,55 +50,60 @@ main options:
 )
 
 func main() {
+	log.SetFlags(0)
+
+	err := mainWithError()
+	if err != nil {
+		log.Fatalln("fatal:", err)
+	}
+}
+
+func mainWithError() error {
 	outputEncoding := flag.String(
 		outputFormatArg,
 		rawFormat,
 		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
+
 	printPatternStrings := flag.Bool(
 		printPatternsArg,
 		false,
 		"Print pattern strings to stderr for future reference")
-	patternIndex := flag.Uint(
-		patternIndexArg,
-		0,
-		"The initial pattern index value")
-	patternSet := flag.Uint(
-		patternSetArg,
-		0,
-		"The initial pattern set value")
+
 	help := flag.Bool(
 		helpArg,
 		false,
 		"Display this help page")
+
 	flag.Parse()
 
 	// TODO: Read from stdin support?
 	if *help {
 		os.Stderr.WriteString(usage)
 		flag.PrintDefaults()
+
 		os.Stderr.WriteString("\nstring manipulation options:\n")
 		newStringFlagsConfig().set.PrintDefaults()
+
 		os.Exit(1)
 	}
 
 	remainingArgs := flag.Args()
 
 	i := 0
+
 	var values []byte
-	pg := &patternGenerator{
-		alphabetIndex: int(*patternIndex),
-		set:           uint8(*patternSet),
+
+	db := &pattern.DeBruijn{}
+	if *printPatternStrings {
+		db.OptLogger = log.Default()
 	}
+
 	for {
 		i++
-		result, err := processNextString(remainingArgs, pg)
-		if err != nil {
-			log.Fatalf("failed to process value %d - %s", i, err)
-		}
 
-		if *printPatternStrings && result.isPatternStr {
-			os.Stderr.WriteString(fmt.Sprintf("pattern str @ %d: %x\n",
-				i, result.value))
+		result, err := processNextString(remainingArgs, db)
+		if err != nil {
+			return fmt.Errorf("failed to process value %d - %s", i, err)
 		}
 
 		values = append(values, result.value...)
@@ -107,10 +114,6 @@ func main() {
 		remainingArgs = result.remainingArgs
 	}
 
-	if pg.alphabetIndex > 0 || pg.set > 0 {
-		log.Printf("pattern ended at index %d, set %d", pg.alphabetIndex, pg.set)
-	}
-
 	switch *outputEncoding {
 	case hexFormat:
 		fmt.Printf("%x", values)
@@ -119,8 +122,10 @@ func main() {
 	case b64Format:
 		fmt.Print(base64.StdEncoding.EncodeToString(values))
 	default:
-		log.Fatalf("unknown output format: '%s'", *outputEncoding)
+		return fmt.Errorf("unknown output format: '%s'", *outputEncoding)
 	}
+
+	return nil
 }
 
 func newStringFlagsConfig() *stringFlagsConfig {
@@ -169,7 +174,7 @@ type processNextStringResult struct {
 	remainingArgs []string
 }
 
-func processNextString(remainingOSArgs []string, pg *patternGenerator) (*processNextStringResult, error) {
+func processNextString(remainingOSArgs []string, db *pattern.DeBruijn) (*processNextStringResult, error) {
 	remainingOSArgsLen := len(remainingOSArgs)
 	if remainingOSArgsLen == 0 {
 		return nil, fmt.Errorf("please specify an input value")
@@ -195,7 +200,14 @@ func processNextString(remainingOSArgs []string, pg *patternGenerator) (*process
 	}
 
 	if *stringFlags.pattern > 0 {
-		value = pg.pattern(int(*stringFlags.pattern))
+		buf := bytes.NewBuffer(nil)
+
+		err = db.WriteToN(buf, int(*stringFlags.pattern))
+		if err != nil {
+			return nil, fmt.Errorf("failed to write pattern string - %w", err)
+		}
+
+		value = buf.Bytes()
 	}
 
 	if *stringFlags.repeatString > 0 {
@@ -216,29 +228,4 @@ func processNextString(remainingOSArgs []string, pg *patternGenerator) (*process
 		isPatternStr:  *stringFlags.pattern > 0,
 		remainingArgs: stringFlags.set.Args(),
 	}, nil
-}
-
-type patternGenerator struct {
-	alphabetIndex int
-	set           uint8
-}
-
-func (o *patternGenerator) pattern(length int) []byte {
-	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	result := bytes.NewBuffer(nil)
-	for i := 0; i < length; i++ {
-		if i%2 == 0 {
-			result.WriteString(string(letters[o.alphabetIndex]))
-			if o.alphabetIndex < len(letters)-1 {
-				o.alphabetIndex++
-			} else {
-				o.alphabetIndex = 0
-				o.set++
-			}
-		} else {
-			result.WriteString(fmt.Sprintf("%d", o.set))
-		}
-	}
-
-	return result.Bytes()
 }
