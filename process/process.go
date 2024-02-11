@@ -219,19 +219,19 @@ type Info struct {
 // Process.Close after they are finished with the process.
 // Refer to the method's documentation for more information.
 type Process struct {
-	input  io.Writer
-	output *bufio.Reader
-	done   func() error
-	rwMu   *sync.RWMutex
-	exited exitInfo
-	info   Info
-	logger *log.Logger
+	input   io.Writer
+	output  *bufio.Reader
+	done    func() error
+	rwMu    *sync.RWMutex
+	exited  exitInfo
+	info    Info
+	loggerR *log.Logger
+	loggerW *log.Logger
 }
 
-// Close releases any resources associated with
-// the underlying software process and kills the process if it has not
-// already exited. For a networked process, the underlying connection
-// will be closed.
+// Close releases any resources associated with the underlying software process
+// and kills the process if it has not already exited. For a remote process,
+// the underlying connection will be closed.
 //
 // The Process is no longer usable once this method is invoked.
 func (o *Process) Close() error {
@@ -275,7 +275,7 @@ func (o *Process) ReadOrExit(b []byte) int {
 func (o *Process) Read(b []byte) (int, error) {
 	n, err := o.output.Read(b)
 
-	if o.logger != nil {
+	if o.loggerR != nil {
 		var hexDump string
 		if n > 0 {
 			hexDump = hex.Dump(b[0:n])
@@ -287,7 +287,7 @@ func (o *Process) Read(b []byte) (int, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("process: Read:\n" + hexDump)
+		o.loggerR.Println("process: Read:\n" + hexDump)
 	}
 
 	return n, err
@@ -310,7 +310,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 	var hexDumpOutput *bytes.Buffer
 	var hexDumper io.WriteCloser
 
-	if o.logger != nil {
+	if o.loggerW != nil {
 		hexDumpOutput = bytes.NewBuffer(nil)
 		hexDumper = hex.Dumper(hexDumpOutput)
 
@@ -319,7 +319,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 
 	n, err := io.Copy(o.input, r)
 
-	if o.logger != nil {
+	if o.loggerW != nil {
 		// Flush remaining bytes to the hex dump buffer.
 		_ = hexDumper.Close()
 
@@ -331,7 +331,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("process: ReadFrom:\n" + hexDump)
+		o.loggerW.Println("process: ReadFrom:\n" + hexDump)
 	}
 
 	if errors.Is(err, io.EOF) {
@@ -373,7 +373,7 @@ func (o *Process) ReadUntilChar(delim byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if o.logger != nil {
+	if o.loggerR != nil {
 		var hexDump string
 		if len(p) > 0 {
 			hexDump = hex.Dump(p)
@@ -385,7 +385,7 @@ func (o *Process) ReadUntilChar(delim byte) ([]byte, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("process: ReadUntilChar:\n" + hexDump)
+		o.loggerR.Println("process: ReadUntilChar:\n" + hexDump)
 	}
 	return p, nil
 }
@@ -428,7 +428,7 @@ func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 
 		// TODO: Maybe search by suffix?
 		if bytes.Contains(buf.Bytes(), p) {
-			if o.logger != nil {
+			if o.loggerR != nil {
 				var hexDump string
 				if len(p) > 0 {
 					hexDump = hex.Dump(buf.Bytes())
@@ -440,7 +440,7 @@ func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 					hexDump = hexDump[0 : len(hexDump)-1]
 				}
 
-				o.logger.Println("process: ReadUntil:\n" + hexDump)
+				o.loggerR.Println("process: ReadUntil:\n" + hexDump)
 			}
 			return buf.Bytes(), nil
 		}
@@ -480,7 +480,7 @@ func (o *Process) WriteOrExit(p []byte) {
 // Write blocks and attempts to write the specified []byte to the
 // process' input.
 func (o *Process) Write(p []byte) (int, error) {
-	if o.logger != nil {
+	if o.loggerW != nil {
 		var hexDump string
 		if len(p) > 0 {
 			hexDump = hex.Dump(p)
@@ -492,7 +492,7 @@ func (o *Process) Write(p []byte) (int, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.logger.Println("process: Write:\n" + hexDump)
+		o.loggerW.Println("process: Write:\n" + hexDump)
 	}
 
 	n, err := o.input.Write(p)
@@ -503,9 +503,16 @@ func (o *Process) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// SetLogger sets the *log.Logger for debugging purposes.
-func (o *Process) SetLogger(logger *log.Logger) {
-	o.logger = logger
+// SetLoggerR sets the *log.Logger for debugging read operations.
+// Data from read operations will be formatted in hexdump format.
+func (o *Process) SetLoggerR(logger *log.Logger) {
+	o.loggerR = logger
+}
+
+// SetLoggerW sets the *log.Logger for debugging write operations.
+// Data from write operations will be formatted in hexdump format.
+func (o *Process) SetLoggerW(logger *log.Logger) {
+	o.loggerW = logger
 }
 
 // InteractiveOrExit calls Process.Interactive, subsequently calling
