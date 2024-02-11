@@ -33,7 +33,7 @@ func ExecOrExit(cmd *exec.Cmd, info Info) *Process {
 // Exec starts the specified *exec.Cmd, returning a *Process which represents
 // the underlying running process.
 //
-// Callers are expected to call Process.Cleanup when the Process has exited,
+// Callers are expected to call Process.Close when the Process has exited,
 // or is no longer needed.
 func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	stdin, err := cmd.StdinPipe()
@@ -109,7 +109,7 @@ func DialOrExit(network string, address string, info Info) *Process {
 // the remote process. The network type string is the same set
 // of strings used for net.Dial.
 //
-// Callers should call Process.Cleanup when the process has exited,
+// Callers should call Process.Close when the process has exited,
 // or a connection to the process is no longer required.
 func Dial(network string, address string, info Info) (*Process, error) {
 	c, err := net.Dial(network, address)
@@ -216,7 +216,7 @@ type Info struct {
 // into a simple API.
 //
 // Depending on the circumstances, callers should generally call
-// Process.Cleanup after they are finished with the process.
+// Process.Close after they are finished with the process.
 // Refer to the method's documentation for more information.
 type Process struct {
 	input  io.Writer
@@ -228,17 +228,13 @@ type Process struct {
 	logger *log.Logger
 }
 
-func (o *Process) Close() error {
-	return o.Cleanup()
-}
-
-// Cleanup, generally speaking, releases any resources associated with
+// Close releases any resources associated with
 // the underlying software process and kills the process if it has not
 // already exited. For a networked process, the underlying connection
 // will be closed.
 //
 // The Process is no longer usable once this method is invoked.
-func (o *Process) Cleanup() error {
+func (o *Process) Close() error {
 	return o.done()
 }
 

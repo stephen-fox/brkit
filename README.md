@@ -239,7 +239,7 @@ func ExampleExec() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	err = proc.WriteLine([]byte("hello world"))
 	if err != nil {
@@ -263,7 +263,7 @@ func ExampleDial() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }

@@ -15,7 +15,7 @@ func ExampleExec() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	err = proc.WriteLine([]byte("hello world"))
 	if err != nil {
@@ -35,7 +35,7 @@ func ExampleDial() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -47,6 +47,7 @@ func ExampleFromNetConn() {
 	}
 
 	proc := FromNetConn(c, X86_64Info())
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -60,6 +61,7 @@ func ExampleFromNetConn_FromTLSConnection() {
 	}
 
 	proc := FromNetConn(tlsConn, X86_64Info())
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -69,6 +71,7 @@ func ExampleFromNamedPipes() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	defer proc.Close()
 
 	proc.Write([]byte("hello world"))
 }
@@ -83,16 +86,17 @@ func ExampleFromIO() {
 	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
 
 	proc := FromIO(sshInput, sshOutput, X86_64Info())
+	defer proc.Close()
 
 	proc.Write([]byte("hello world"))
 }
 
-func ExampleProcess_Cleanup() {
+func ExampleProcess_Close() {
 	proc, err := Exec(exec.Command("cat"), X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 }
 
 func ExampleProcess_Read() {
@@ -100,7 +104,7 @@ func ExampleProcess_Read() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	b := make([]byte, 1024)
 
@@ -117,7 +121,7 @@ func ExampleProcess_WriteLine() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
@@ -127,7 +131,7 @@ func ExampleProcess_Write() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	proc.Write([]byte("hello world\n"))
 }
@@ -137,7 +141,7 @@ func ExampleProcess_Interactive() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer proc.Cleanup()
+	defer proc.Close()
 
 	// Anything typed into stdin will be written to the process' stdin.
 	err = proc.Interactive()
