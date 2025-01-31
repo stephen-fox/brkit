@@ -6,6 +6,32 @@ import (
 	"log"
 )
 
+func ExamplePointerMaker_FromParseUintPrefix() {
+	pm := PointerMakerForX86_32()
+
+	pointer, err := pm.FromParseUintPrefix("0xdeadbeef", 16, "0x")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(pointer.HexString())
+
+	// Output: 0xefbeadde
+}
+
+func ExamplePointerMaker_FromParseUint() {
+	pm := PointerMakerForX86_32()
+
+	pointer, err := pm.FromParseUint("deadbeef", 16)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(pointer.HexString())
+
+	// Output: 0xefbeadde
+}
+
 func ExamplePointerMaker_FromHexString() {
 	pm := PointerMakerForX86_32()
 

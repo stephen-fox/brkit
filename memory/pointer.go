@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // PointerMakerForX86_32 returns a new PointerMaker for a X86 32-bit system.
@@ -65,6 +67,25 @@ type PointerMaker struct {
 	target  binary.ByteOrder
 	bits    int
 	ptrSize int
+}
+
+// FromParseUintPrefix trims the specified prefix from str and then
+// parses the resulting string into a Pointer using FromParseUint.
+func (o PointerMaker) FromParseUintPrefix(str string, base int, prefix string) (Pointer, error) {
+	str = strings.TrimPrefix(str, prefix)
+
+	return o.FromParseUint(str, base)
+}
+
+// FromParseUint parses a string into an unsigned integer and converts
+// the resulting integer into a Pointer.
+func (o PointerMaker) FromParseUint(str string, base int) (Pointer, error) {
+	u, err := strconv.ParseUint(str, base, o.bits)
+	if err != nil {
+		return Pointer{}, err
+	}
+
+	return o.FromUint(uint(u)), nil
 }
 
 // FromUint converts an unsigned integer memory address into a Pointer.
