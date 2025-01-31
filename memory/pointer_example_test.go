@@ -6,10 +6,10 @@ import (
 	"log"
 )
 
-func ExamplePointerMaker_FromParseUintPrefix() {
+func ExamplePointerMaker_ParseUintPrefix() {
 	pm := PointerMakerForX86_32()
 
-	pointer, err := pm.FromParseUintPrefix("0xdeadbeef", 16, "0x")
+	pointer, err := pm.ParseUintPrefix("0xdeadbeef", 16, "0x")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -19,10 +19,10 @@ func ExamplePointerMaker_FromParseUintPrefix() {
 	// Output: 0xefbeadde
 }
 
-func ExamplePointerMaker_FromParseUint() {
+func ExamplePointerMaker_ParseUint() {
 	pm := PointerMakerForX86_32()
 
-	pointer, err := pm.FromParseUint("deadbeef", 16)
+	pointer, err := pm.ParseUint("deadbeef", 16)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -106,7 +106,7 @@ func ExamplePointer_Uint_Math() {
 
 	initial := pm.FromUint(0xdeadbeef)
 
-	modified := pm.FromUint(initial.Uint()-0xef)
+	modified := pm.FromUint(initial.Uint() - 0xef)
 
 	fmt.Printf("0x%x", modified.Uint())
 

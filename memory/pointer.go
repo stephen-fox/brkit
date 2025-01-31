@@ -69,12 +69,12 @@ type PointerMaker struct {
 	ptrSize int
 }
 
-// FromParseUintPrefixOrExit calls PointerMaker.FromParseUintPrefix,
+// ParseUintPrefixOrExit calls PointerMaker.ParseUintPrefix,
 // subsequently calling DefaultExitFn if an error occurs.
 //
-// Refer to PointerMaker.FromParseUintPrefix for more information.
-func (o PointerMaker) FromParseUintPrefixOrExit(str string, base int, prefix string) Pointer {
-	p, err := o.FromParseUintPrefix(str, base, prefix)
+// Refer to PointerMaker.ParseUintPrefix for more information.
+func (o PointerMaker) ParseUintPrefixOrExit(str string, base int, prefix string) Pointer {
+	p, err := o.ParseUintPrefix(str, base, prefix)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to parse uint string: %q - %w",
 			str, err))
@@ -83,20 +83,20 @@ func (o PointerMaker) FromParseUintPrefixOrExit(str string, base int, prefix str
 	return p
 }
 
-// FromParseUintPrefix trims the specified prefix from str and then
-// parses the resulting string into a Pointer using FromParseUint.
-func (o PointerMaker) FromParseUintPrefix(str string, base int, prefix string) (Pointer, error) {
+// ParseUintPrefix trims the specified prefix from str and then
+// parses the resulting string into a Pointer using ParseUint.
+func (o PointerMaker) ParseUintPrefix(str string, base int, prefix string) (Pointer, error) {
 	str = strings.TrimPrefix(str, prefix)
 
-	return o.FromParseUint(str, base)
+	return o.ParseUint(str, base)
 }
 
-// FromParseUintOrExit calls PointerMaker.FromParseUint,
-// subsequently calling DefaultExitFn if an error occurs.
+// ParseUintOrExit calls PointerMaker.ParseUint, subsequently calling
+// DefaultExitFn if an error occurs.
 //
-// Refer to PointerMaker.FromParseUint for more information.
-func (o PointerMaker) FromParseUintOrExit(str string, base int, prefix string) Pointer {
-	p, err := o.FromParseUint(str, base)
+// Refer to PointerMaker.ParseUint for more information.
+func (o PointerMaker) ParseUintOrExit(str string, base int) Pointer {
+	p, err := o.ParseUint(str, base)
 	if err != nil {
 		DefaultExitFn(fmt.Errorf("failed to parse uint string: %q - %w",
 			str, err))
@@ -105,9 +105,9 @@ func (o PointerMaker) FromParseUintOrExit(str string, base int, prefix string) P
 	return p
 }
 
-// FromParseUint parses a string into an unsigned integer and converts
+// ParseUint parses a string into an unsigned integer and converts
 // the resulting integer into a Pointer.
-func (o PointerMaker) FromParseUint(str string, base int) (Pointer, error) {
+func (o PointerMaker) ParseUint(str string, base int) (Pointer, error) {
 	u, err := strconv.ParseUint(str, base, o.bits)
 	if err != nil {
 		return Pointer{}, err
