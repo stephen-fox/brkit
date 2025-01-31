@@ -69,12 +69,40 @@ type PointerMaker struct {
 	ptrSize int
 }
 
+// FromParseUintPrefixOrExit calls PointerMaker.FromParseUintPrefix,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to PointerMaker.FromParseUintPrefix for more information.
+func (o PointerMaker) FromParseUintPrefixOrExit(str string, base int, prefix string) Pointer {
+	p, err := o.FromParseUintPrefix(str, base, prefix)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("failed to parse uint string: %q - %w",
+			str, err))
+	}
+
+	return p
+}
+
 // FromParseUintPrefix trims the specified prefix from str and then
 // parses the resulting string into a Pointer using FromParseUint.
 func (o PointerMaker) FromParseUintPrefix(str string, base int, prefix string) (Pointer, error) {
 	str = strings.TrimPrefix(str, prefix)
 
 	return o.FromParseUint(str, base)
+}
+
+// FromParseUintOrExit calls PointerMaker.FromParseUint,
+// subsequently calling DefaultExitFn if an error occurs.
+//
+// Refer to PointerMaker.FromParseUint for more information.
+func (o PointerMaker) FromParseUintOrExit(str string, base int, prefix string) Pointer {
+	p, err := o.FromParseUint(str, base)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("failed to parse uint string: %q - %w",
+			str, err))
+	}
+
+	return p
 }
 
 // FromParseUint parses a string into an unsigned integer and converts
