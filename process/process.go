@@ -415,11 +415,16 @@ func (o *Process) ReadUntilOrExit(p []byte) []byte {
 // specified []byte.
 func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
+
 	for {
-		b, err := o.ReadByte()
+		bSlice := make([]byte, 1)
+
+		_, err := o.output.Read(bSlice)
 		if err != nil {
 			return nil, err
 		}
+
+		b := bSlice[0]
 
 		err = buf.WriteByte(b)
 		if err != nil {
@@ -449,7 +454,14 @@ func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 
 // ReadByte blocks and attempts to read one byte from the process' output.
 func (o *Process) ReadByte() (byte, error) {
-	return o.output.ReadByte()
+	b := make([]byte, 1)
+
+	_, err := o.Read(b)
+	if err != nil {
+		return 0, err
+	}
+
+	return b[0], nil
 }
 
 // WriteLineOrExit calls Process.WriteLine, subsequently calling DefaultExitFn
