@@ -310,7 +310,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 	var hexDumpOutput *bytes.Buffer
 	var hexDumper io.WriteCloser
 
-	if o.loggerW != nil {
+	if o.loggerR != nil {
 		hexDumpOutput = bytes.NewBuffer(nil)
 		hexDumper = hex.Dumper(hexDumpOutput)
 
@@ -319,7 +319,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 
 	n, err := io.Copy(o.input, r)
 
-	if o.loggerW != nil {
+	if o.loggerR != nil {
 		// Flush remaining bytes to the hex dump buffer.
 		_ = hexDumper.Close()
 
@@ -331,7 +331,7 @@ func (o *Process) ReadFrom(r io.Reader) (int64, error) {
 			hexDump = hexDump[0 : len(hexDump)-1]
 		}
 
-		o.loggerW.Println("process: ReadFrom:\n" + hexDump)
+		o.loggerR.Println("process: ReadFrom:\n" + hexDump)
 	}
 
 	if errors.Is(err, io.EOF) {
