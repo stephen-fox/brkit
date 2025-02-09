@@ -46,7 +46,10 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 		return nil, fmt.Errorf("failed to get stdout pipe - %w", err)
 	}
 
-	// TODO: stderr.
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stderr pipe - %w", err)
+	}
 
 	err = cmd.Start()
 	if err != nil {
@@ -54,10 +57,11 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	}
 
 	proc := &Process{
-		input:  stdin,
-		output: bufio.NewReader(stdout),
-		rwMu:   &sync.RWMutex{},
-		info:   info,
+		input:     stdin,
+		output:    bufio.NewReader(stdout),
+		rwMu:      &sync.RWMutex{},
+		info:      info,
+		optStderr: stderr,
 	}
 
 	waitDone := make(chan struct{})
@@ -219,14 +223,16 @@ type Info struct {
 // Process.Close after they are finished with the process.
 // Refer to the method's documentation for more information.
 type Process struct {
-	input   io.Writer
-	output  *bufio.Reader
-	close   func() error
-	rwMu    *sync.RWMutex
-	exited  exitInfo
-	info    Info
-	loggerR *log.Logger
-	loggerW *log.Logger
+	input  io.Writer
+	output *bufio.Reader
+	close  func() error
+	rwMu   *sync.RWMutex
+	exited exitInfo
+	info   Info
+
+	optStderr io.Reader
+	loggerR   *log.Logger
+	loggerW   *log.Logger
 }
 
 // Close releases any resources associated with the underlying software process
@@ -525,6 +531,18 @@ func (o *Process) SetLoggerR(logger *log.Logger) {
 // Data from write operations will be formatted in hexdump format.
 func (o *Process) SetLoggerW(logger *log.Logger) {
 	o.loggerW = logger
+}
+
+// OptStderr returns the process' standard error stream *if* it is
+// available (i.e., if the Porcess was created using the Exec function).
+//
+// Otherwise, nil is returned.
+func (o *Process) OptStderr() io.Reader {
+	if o.optStderr == nil {
+		return nil
+	}
+
+	return o.optStderr
 }
 
 // InteractiveOrExit calls Process.Interactive, subsequently calling
