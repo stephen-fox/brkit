@@ -1,6 +1,7 @@
-// pattern finds repeating patterns in strings. This is useful for locating
-// where an input string begins to overwrite program state (e.g., stack-based
-// buffer overflows).
+// frag finds fragments in pattern strings. Useful for understanding
+// how a payload overwrites process state (e.g., finding the offset
+// of a payload fragment in a variable that was overwritten by
+// a stack-based buffer overflow).
 package main
 
 import (

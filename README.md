@@ -245,16 +245,16 @@ Several command line utilities are included to aid in binary research efforts.
 Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
 the underlying binary data into another encoding.
 
-#### `pattern`
+#### `frag`
 
-Finds repeating patterns in strings. This is useful for locating
-where an input string begins to overwrite program state (e.g., stack-based
-buffer overflows).
+Finds fragments in pattern strings. Useful for understanding how a payload
+overwrites process state (e.g., finding the offset of a payload fragment in
+a variable that was overwritten by a stack-based buffer overflow).
 
 #### `stringer`
 
-A string creation and manipulation tool capable of creating pattern strings and
-arbitrary binary data.
+A string creation and manipulation tool capable of creating pattern strings
+and arbitrary binary data.
 
 ## Installing command line utilities
 
