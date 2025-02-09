@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -13,82 +14,126 @@ import (
 )
 
 func main() {
-	pattern := flag.String(
+	log.SetFlags(0)
+
+	err := mainWithError()
+	if err != nil {
+		log.Fatalln("fatal:", err)
+	}
+}
+
+func mainWithError() error {
+	patternStr := flag.String(
 		"p",
 		"",
 		"The pattern string to search")
-	patternTohex := flag.Bool(
-		"tohex",
-		false,
-		"Encode pattern in hexadecimal encoding before searching it")
+
 	fragment := flag.String(
 		"f",
 		"",
 		"The fragment to find")
+
 	wrongEndian := flag.Bool(
-		"little",
+		"r",
 		false,
-		"Convert the fragment to little (wrong) endian before finding it")
+		"Reverse fragment's endianness")
+
 	shorten := flag.Bool(
 		"retry",
 		false,
 		"Repeatedly try shortening the fragment if it is not found in the pattern")
 
+	quiet := flag.Bool(
+		"q",
+		false,
+		"Only output the range without any visualization")
+
 	flag.Parse()
 
-	if len(*pattern) == 0 {
-		log.Fatalln("please specify a pattern string")
+	if len(*patternStr) == 0 {
+		return errors.New("please specify a pattern string")
 	}
 
 	if len(*fragment) == 0 {
-		log.Fatalln("please specify a fragment string")
+		return errors.New("please specify a fragment string")
 	}
 
-	*fragment = strings.TrimPrefix(*fragment, "0x")
-	decodedFragment := make([]byte, hex.DecodedLen(len(*fragment)))
-	_, err := hex.Decode(decodedFragment, []byte(*fragment))
-	if err != nil {
-		log.Fatalf("failed to hex decode fragment string - %s", err)
+	var fragmentBinary []byte
+	var err error
+
+	if strings.HasPrefix(*fragment, "0x") {
+		fragmentBinary, err = hex.DecodeString(strings.TrimPrefix(*fragment, "0x"))
+		if err != nil {
+			return fmt.Errorf("failed to hex decode fragment string - %v", err)
+		}
+	} else {
+		fragmentBinary = []byte(*fragment)
 	}
 
-	*pattern = strings.TrimPrefix(*pattern, "0x")
-	if *patternTohex {
-		*pattern = fmt.Sprintf("%x", *pattern)
-	}
-
-	patternRaw, err := hex.DecodeString(*pattern)
-	if err != nil {
-		log.Fatalf("failed to hex decode pattern - %s", err)
+	var patternBinary []byte
+	if strings.HasPrefix(*patternStr, "0x") {
+		patternBinary, err = hex.DecodeString(strings.TrimPrefix(*patternStr, "0x"))
+		if err != nil {
+			return fmt.Errorf("failed to hex decode pattern string - %v", err)
+		}
+	} else {
+		patternBinary = []byte(*patternStr)
 	}
 
 	if *wrongEndian {
-		decodedFragmentLen := len(decodedFragment)
+		decodedFragmentLen := len(fragmentBinary)
 		temp := make([]byte, decodedFragmentLen)
-		for i := range decodedFragment {
-			temp[decodedFragmentLen-1-i] = decodedFragment[i]
+
+		for i := range fragmentBinary {
+			temp[decodedFragmentLen-1-i] = fragmentBinary[i]
 		}
-		decodedFragment = temp
+
+		fragmentBinary = temp
 	}
 
 	for {
 		if *shorten {
-			log.Printf("trying fragment: '%s'", decodedFragment)
+			log.Printf("shortening fragment to: '%s'...",
+				strings.TrimSpace(hex.Dump(fragmentBinary)))
 		}
 
-		index := bytes.Index(patternRaw, decodedFragment)
+		index := bytes.Index(patternBinary, fragmentBinary)
 		if index < 0 {
-			newDecodedFragmentLen := len(decodedFragment)
+			newDecodedFragmentLen := len(fragmentBinary)
 			if !*shorten || newDecodedFragmentLen == 1 {
 				break
 			}
-			decodedFragment = decodedFragment[0:newDecodedFragmentLen-1]
+
+			fragmentBinary = fragmentBinary[0 : newDecodedFragmentLen-1]
+
 			continue
 		}
 
-		log.Printf("fragment offset is %d, result: '%s'",
-			index, string(*pattern)[0:index])
-		return
+		fragmentLen := len(fragmentBinary)
+		endIndex := index + fragmentLen
+
+		infoStr := fmt.Sprintf("%d:%d (%d bytes)",
+			index, endIndex, fragmentLen)
+
+		if *quiet {
+			fmt.Println(infoStr)
+
+			return nil
+		}
+
+		fmt.Printf("%s\n", *patternStr)
+
+		spaces := strings.Repeat(" ", index)
+
+		fmt.Printf("%s%s\n",
+			spaces, strings.Repeat("^", len(fragmentBinary)))
+
+		fmt.Printf("%s%s\n",
+			spaces, infoStr)
+
+		return nil
 	}
 
-	log.Fatalf("failed to find fragment '%x' in pattern", decodedFragment)
+	return fmt.Errorf("failed to find fragment (hexdump of fragment:\n%s)",
+		strings.TrimSpace(hex.Dump(fragmentBinary)))
 }
