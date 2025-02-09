@@ -489,7 +489,7 @@ func (o *Process) WriteLine(p []byte) error {
 // WriteOrExit calls Process.Write, subsequently calling DefaultExitFn
 // if an error occurs.
 func (o *Process) WriteOrExit(p []byte) {
-	_, err := o.input.Write(p)
+	_, err := o.Write(p)
 	if err != nil {
 		DefaultExitFn(err)
 	}
