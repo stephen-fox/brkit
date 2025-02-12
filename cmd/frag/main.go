@@ -27,12 +27,12 @@ func mainWithError() error {
 	patternStr := flag.String(
 		"p",
 		"",
-		"The pattern string to search")
+		"The pattern string to search (will be hex-decoded if it starts with 0x)")
 
 	fragment := flag.String(
 		"f",
 		"",
-		"The fragment to find")
+		"The fragment to find (will be hex-decoded if it starts with 0x)")
 
 	wrongEndian := flag.Bool(
 		"r",
