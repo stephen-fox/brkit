@@ -51,6 +51,10 @@ func mainWithError() error {
 
 	flag.Parse()
 
+	if flag.NArg() > 0 {
+		return errors.New("it looks like you specified a non-flag argument, are you missing a -<arg>?")
+	}
+
 	if len(*patternStr) == 0 {
 		return errors.New("please specify a pattern string")
 	}
