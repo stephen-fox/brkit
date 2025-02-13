@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -203,11 +204,11 @@ func (o PointerMaker) FromRawBytesOrExit(raw []byte, sourceEndianness binary.Byt
 func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder) (Pointer, error) {
 	rawLen := len(raw)
 	if rawLen == 0 {
-		return Pointer{}, fmt.Errorf("bytes slice cannot be zero-length")
+		return Pointer{}, errors.New("pointer bytes cannot be zero-length")
 	}
 
 	if rawLen > o.ptrSize {
-		return Pointer{}, fmt.Errorf("bytes slice cannot be longer than pointer size of %d - it is %d bytes long",
+		return Pointer{}, fmt.Errorf("pointer bytes cannot be longer than pointer size of %d - it is %d bytes long",
 			o.ptrSize, rawLen)
 	}
 
@@ -253,11 +254,9 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 // Pointer provides a canonical representation of a memory address pointer.
 // A pointer is simply a variable that points to a memory address.
 //
-// This struct's methods render the pointer in the endianness for the
-// target platform, regardless of the selected data type.
-//
-// When created with a PointerMaker, the []byte contained by this struct
-// is guaranteed to be padded to the size of a pointer on the target system.
+// Unless otherwise noted, the struct's methods render the pointer in
+// the endianness for the target platform, regardless of the selected
+// data type.
 //
 // Pointers are created with a PointerMaker.
 type Pointer struct {
@@ -266,7 +265,8 @@ type Pointer struct {
 	bytes     []byte
 }
 
-// Bytes returns the pointer as a []byte.
+// Bytes returns the pointer as a []byte which is guaranteed to be padded
+// to the size of a pointer on the target system.
 func (o Pointer) Bytes() []byte {
 	return o.bytes
 }
@@ -280,6 +280,18 @@ func (o Pointer) Uint() uint {
 
 // HexString returns a hex-encoded string representing the pointer,
 // prefixed with the "0x" string.
+//
+// This mehtod renders the pointer as a human would expect to
+// see it; it does not respect the platform's byte ordering.
 func (o Pointer) HexString() string {
-	return fmt.Sprintf("0x%x", o.Bytes())
+	initial := fmt.Sprintf("%x", o.address)
+
+	needsToBeLen := len(o.bytes) * 2
+	initialLen := len(initial)
+
+	if initialLen < needsToBeLen {
+		return "0x" + strings.Repeat("0", needsToBeLen-initialLen) + initial
+	}
+
+	return "0x" + initial
 }

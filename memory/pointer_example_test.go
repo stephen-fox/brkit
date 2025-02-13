@@ -16,7 +16,7 @@ func ExamplePointerMaker_ParseUintPrefix() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointerMaker_ParseUint() {
@@ -29,7 +29,7 @@ func ExamplePointerMaker_ParseUint() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointerMaker_FromHexString() {
@@ -42,7 +42,7 @@ func ExamplePointerMaker_FromHexString() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointerMaker_FromHexBytes() {
@@ -55,7 +55,7 @@ func ExamplePointerMaker_FromHexBytes() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointerMaker_FromUint() {
@@ -65,7 +65,7 @@ func ExamplePointerMaker_FromUint() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointerMaker_FromRawBytes() {
@@ -78,7 +78,7 @@ func ExamplePointerMaker_FromRawBytes() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
 
 func ExamplePointer_Bytes() {
@@ -120,5 +120,5 @@ func ExamplePointer_HexString() {
 
 	fmt.Println(pointer.HexString())
 
-	// Output: 0xefbeadde
+	// Output: 0xdeadbeef
 }
