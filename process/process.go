@@ -357,7 +357,8 @@ func (o *Process) ReadLineOrExit() []byte {
 }
 
 // ReadLine blocks and attempts to read from the process' output until
-// a new line character is found.
+// a new line character is found. It returns what was read from the
+// Process including the delimiter.
 func (o *Process) ReadLine() ([]byte, error) {
 	return o.ReadUntilChar('\n')
 }
@@ -373,7 +374,8 @@ func (o *Process) ReadUntilCharOrExit(delim byte) []byte {
 }
 
 // ReadUntilChar blocks and attempts to read from the process' output until
-// the specified character is found.
+// the specified character is found. It returns what was read from the
+// Process including the delimiter.
 func (o *Process) ReadUntilChar(delim byte) ([]byte, error) {
 	p, err := o.output.ReadBytes(delim)
 	if err != nil {
@@ -417,7 +419,7 @@ func (o *Process) ReadUntilOrExit(p []byte) []byte {
 }
 
 // ReadUntil blocks and attempts to read from the process' output until the
-// specified []byte is found, returning the data read, including the
+// specified []byte is found, returning the data read including the
 // specified []byte.
 func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(nil)
