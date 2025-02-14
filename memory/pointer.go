@@ -252,11 +252,7 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 }
 
 // Pointer provides a canonical representation of a memory address pointer.
-// A pointer is simply a variable that points to a memory address.
-//
-// Unless otherwise noted, the struct's methods render the pointer in
-// the endianness for the target platform, regardless of the selected
-// data type.
+// A pointer is a variable that points to a memory address.
 //
 // Pointers are created with a PointerMaker.
 type Pointer struct {
@@ -265,8 +261,8 @@ type Pointer struct {
 	bytes     []byte
 }
 
-// Bytes returns the pointer as a []byte which is guaranteed to be padded
-// to the size of a pointer on the target system.
+// Bytes returns the pointer as a []byte in the endianness of the target
+// platform with the correct padding.
 func (o Pointer) Bytes() []byte {
 	return o.bytes
 }
@@ -281,7 +277,7 @@ func (o Pointer) Uint() uint {
 // HexString returns a hex-encoded string representing the pointer,
 // prefixed with the "0x" string.
 //
-// This mehtod renders the pointer as a human would expect to
+// This method renders the pointer as a human would expect to
 // see it; it does not respect the platform's byte ordering.
 func (o Pointer) HexString() string {
 	initial := fmt.Sprintf("%x", o.address)
