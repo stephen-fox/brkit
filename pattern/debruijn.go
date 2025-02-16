@@ -28,7 +28,54 @@ const (
 	deBruijnCharsLen = len(deBruijnChars)
 )
 
-// WriteToNOrExit calls WriteToN and calls DefaultExitFn if an error occurs.
+// SomeBytesOrExit calls SomeBytes. It calls DefaultExitFn
+// if an error occurs.
+func (o *DeBruijn) SomeBytesOrExit(n int) []byte {
+	b, err := o.SomeBytes(n)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("pattern.debruijn: some bytes failed; %w", err))
+	}
+
+	return b
+}
+
+// SomeBytes returns n bytes of a de Bruijn pattern string as a []byte.
+func (o *DeBruijn) SomeBytes(n int) ([]byte, error) {
+	b := make([]byte, n)
+
+	_, err := o.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// ReadOrExit calls Read. It calls DefaultExitFn if an error occurs.
+func (o *DeBruijn) ReadOrExit(b []byte) int {
+	n, err := o.Read(b)
+	if err != nil {
+		DefaultExitFn(fmt.Errorf("pattern.debruijn: failed to read bytes - %w", err))
+	}
+
+	return n
+}
+
+// Read reads len(b) bytes of a de Bruijn pattern string into b.
+//
+// This method implements the io.Reader interface.
+func (o *DeBruijn) Read(b []byte) (int, error) {
+	err := o.generate(len(b))
+	if err != nil {
+		return 0, fmt.Errorf("failed to generate pattern data for read - %w", err)
+	}
+
+	n, err := o.buf.Read(b)
+
+	return n, err
+}
+
+// WriteToNOrExit calls WriteToN. It calls DefaultExitFn if an error occurs.
 func (o *DeBruijn) WriteToNOrExit(w io.Writer, n int) {
 	err := o.WriteToN(w, n)
 	if err != nil {
@@ -40,6 +87,22 @@ func (o *DeBruijn) WriteToNOrExit(w io.Writer, n int) {
 // WriteToN writes n bytes of a de Bruijn pattern string to w.
 // Subsequent calls to WriteToN will resume the de Bruijn sequence.
 func (o *DeBruijn) WriteToN(w io.Writer, n int) error {
+	err := o.generate(n)
+	if err != nil {
+		return fmt.Errorf("failed to generate pattern data for write - %w", err)
+	}
+
+	_, err = io.CopyN(w, o.buf, int64(n))
+	if err != nil {
+		return err
+	}
+
+	o.numCalls++
+
+	return nil
+}
+
+func (o *DeBruijn) generate(n int) error {
 	if n <= 0 {
 		return errors.New("n is less than or equal to zero")
 	}
@@ -49,7 +112,7 @@ func (o *DeBruijn) WriteToN(w io.Writer, n int) error {
 	}
 
 	for o.buf.Len() < n {
-		err := o.generate()
+		err := o._generate()
 		if err != nil {
 			return err
 		}
@@ -64,18 +127,11 @@ func (o *DeBruijn) WriteToN(w io.Writer, n int) error {
 			string(o.buf.Bytes()[0:n]))
 	}
 
-	_, err := io.CopyN(w, o.buf, int64(n))
-	if err != nil {
-		return err
-	}
-
-	o.numCalls++
-
 	return nil
 }
 
 // TODO: This method is incredibly inefficent and needs some halp.
-func (o *DeBruijn) generate() error {
+func (o *DeBruijn) _generate() error {
 	o.n += 4
 
 	if o.t == 0 {
