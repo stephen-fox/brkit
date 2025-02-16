@@ -35,6 +35,14 @@ func ExecOrExit(cmd *exec.Cmd, info Info) *Process {
 //
 // Callers are expected to call Process.Close when the Process has exited,
 // or is no longer needed.
+//
+// By default, the process' standard error is left untouched (i.e.,
+// it writes to /dev/null). To capture its stderr, either set the
+// exec.Cmd.Stderr field or call the exec.Cmd.StderrPipe method.
+// For example, setting the Stderr field to hex.Dumper(os.Stderr)
+// writes a hex dump of the child process' stderr to the current
+// process' standard error. If the exec.Cmd.Stderr object implements
+// io.Closer, then the Close method is called after the process exits.
 func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -46,9 +54,14 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 		return nil, fmt.Errorf("failed to get stdout pipe - %w", err)
 	}
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stderr pipe - %w", err)
+	var optStderr io.WriteCloser
+	if cmd.Stderr != nil {
+		tmp, isCloser := cmd.Stderr.(io.WriteCloser)
+		if isCloser {
+			optStderr = tmp
+		} else {
+			optStderr = &writeNoOpCloser{w: cmd.Stderr}
+		}
 	}
 
 	err = cmd.Start()
@@ -57,11 +70,10 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	}
 
 	proc := &Process{
-		input:     stdin,
-		output:    bufio.NewReader(stdout),
-		rwMu:      &sync.RWMutex{},
-		info:      info,
-		optStderr: stderr,
+		input:  stdin,
+		output: bufio.NewReader(stdout),
+		rwMu:   &sync.RWMutex{},
+		info:   info,
 	}
 
 	waitDone := make(chan struct{})
@@ -78,6 +90,11 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 
 	go func() {
 		err := cmd.Wait()
+
+		if optStderr != nil {
+			optStderr.Close()
+		}
+
 		proc.rwMu.Lock()
 		proc.exited = exitInfo{
 			exited: true,
@@ -88,6 +105,18 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	}()
 
 	return proc, nil
+}
+
+type writeNoOpCloser struct {
+	w io.Writer
+}
+
+func (o *writeNoOpCloser) Write(b []byte) (int, error) {
+	return o.w.Write(b)
+}
+
+func (o *writeNoOpCloser) Close() error {
+	return nil
 }
 
 type exitInfo struct {
@@ -230,9 +259,8 @@ type Process struct {
 	exited exitInfo
 	info   Info
 
-	optStderr io.Reader
-	loggerR   *log.Logger
-	loggerW   *log.Logger
+	loggerR *log.Logger
+	loggerW *log.Logger
 }
 
 // Close releases any resources associated with the underlying software process
@@ -533,18 +561,6 @@ func (o *Process) SetLoggerR(logger *log.Logger) {
 // Data from write operations will be formatted in hexdump format.
 func (o *Process) SetLoggerW(logger *log.Logger) {
 	o.loggerW = logger
-}
-
-// OptStderr returns the process' standard error stream *if* it is
-// available (i.e., if the Porcess was created using the Exec function).
-//
-// Otherwise, nil is returned.
-func (o *Process) OptStderr() io.Reader {
-	if o.optStderr == nil {
-		return nil
-	}
-
-	return o.optStderr
 }
 
 // InteractiveOrExit calls Process.Interactive, subsequently calling
