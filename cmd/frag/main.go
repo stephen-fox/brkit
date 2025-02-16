@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -27,7 +28,12 @@ func mainWithError() error {
 	patternStr := flag.String(
 		"p",
 		"",
-		"The pattern string to search (will be hex-decoded if it starts with 0x)")
+		"The string to search (will be hex-decoded if it starts with 0x)")
+
+	patternStrFile := flag.String(
+		"P",
+		"",
+		"Load the string to search from a file")
 
 	fragment := flag.String(
 		"f",
@@ -55,12 +61,22 @@ func mainWithError() error {
 		return errors.New("it looks like you specified a non-flag argument, are you missing a -<arg>?")
 	}
 
-	if len(*patternStr) == 0 {
+	if *patternStr == "" && *patternStrFile == "" {
 		return errors.New("please specify a pattern string")
 	}
 
-	if len(*fragment) == 0 {
+	if *fragment == "" {
 		return errors.New("please specify a fragment string")
+	}
+
+	if *patternStrFile != "" {
+		patternBytes, err := os.ReadFile(*patternStrFile)
+		if err != nil {
+			return fmt.Errorf("failed to read pattern string from file %q - %w",
+				*patternStrFile, err)
+		}
+
+		*patternStr = string(patternBytes)
 	}
 
 	var fragmentBinary []byte
