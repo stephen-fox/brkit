@@ -9,6 +9,10 @@
 - Add a global library that sets the DefaultExitFn and exit on error
   behavior for all brkit libraries
 
+## iokit
+
+- Add TrimEnd (or similarly named) method to remove n bytes from end
+
 ## pattern
 
 - Maybe use more capital letters in de bruijn string?
@@ -21,6 +25,7 @@
 - Add "Ctx" functions (i.e., FromIOCtx) where the first argument takes
   a `context.Context`. Use the Context.Done channel to make the process
   "exit" by closing IO
+- Consider adding read/write timeouts / deadlines
 
 ## cmd/frag
 

@@ -16,8 +16,6 @@ import (
 	"syscall"
 )
 
-// TODO: Timeouts / deadlines.
-
 // ExecOrExit starts the specified *exec.Cmd, subsequently calling
 // DefaultExitFn if an error occurs.
 //
