@@ -3,6 +3,7 @@ package process
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
+	"time"
 )
 
 // ExecOrExit starts the specified *exec.Cmd, subsequently calling
@@ -28,7 +30,7 @@ func ExecOrExit(cmd *exec.Cmd, info Info) *Process {
 	return p
 }
 
-// Exec starts the specified *exec.Cmd, returning a *Process which represents
+// Exec starts the specified *exec.Cmd, returning a Process which represents
 // the underlying running process.
 //
 // Callers are expected to call Process.Close when the Process has exited,
@@ -67,39 +69,33 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 		return nil, fmt.Errorf("failed to start process - %w", err)
 	}
 
+	onExited := make(chan struct{})
+
 	proc := &Process{
-		input:  stdin,
-		output: bufio.NewReader(stdout),
-		rwMu:   &sync.RWMutex{},
-		info:   info,
+		info:      info,
+		optKillFn: cmd.Process.Kill,
+		optOnExit: onExited,
+		optClose:  []io.Closer{stdin, stdout},
 	}
 
-	waitDone := make(chan struct{})
-	proc.close = func() error {
-		proc.rwMu.RLock()
-		exitedCopy := proc.exited
-		proc.rwMu.RUnlock()
-		if !exitedCopy.exited {
-			cmd.Process.Kill()
-		}
-		<-waitDone
-		return exitedCopy.err
+	if optStderr != nil {
+		proc.optClose = append(proc.optClose, optStderr)
+	}
+
+	proc.input = &procAwareWriter{
+		writer: stdin,
+		proc:   proc,
+	}
+
+	proc.output = &procAwareReader{
+		reader: bufio.NewReader(stdout),
+		proc:   proc,
 	}
 
 	go func() {
 		err := cmd.Wait()
 
-		if optStderr != nil {
-			optStderr.Close()
-		}
-
-		proc.rwMu.Lock()
-		proc.exited = exitInfo{
-			exited: true,
-			err:    err,
-		}
-		close(waitDone)
-		proc.rwMu.Unlock()
+		proc.setExited(err)
 	}()
 
 	return proc, nil
@@ -136,33 +132,47 @@ func DialOrExit(network string, address string, info Info) *Process {
 }
 
 // Dial attempts to connect to a remote process using the specified
-// network type and address, returning a *Process which represents
+// network type and address, returning a Process which represents
 // the remote process. The network type string is the same set
 // of strings used for net.Dial.
 //
 // Callers should call Process.Close when the process has exited,
 // or a connection to the process is no longer required.
 func Dial(network string, address string, info Info) (*Process, error) {
-	c, err := net.Dial(network, address)
+	return DialCtx(context.Background(), network, address, info)
+}
+
+// DialCtx attempts to connect to a remote process using the specified
+// network type and address, returning a Process which represents
+// the remote process. The network type string is the same set of
+// strings used for net.Dial.
+//
+// Canceling the provided context.Context will trigger the Process.Close
+// method. Callers should explicitly call Process.Close when access to
+// the process is no longer required.
+func DialCtx(ctx context.Context, network string, address string, info Info) (*Process, error) {
+	dialer := net.Dialer{}
+
+	c, err := dialer.DialContext(ctx, network, address)
 	if err != nil {
 		return nil, err
 	}
 
-	return FromNetConn(c, info), nil
+	return FromNetConnCtx(ctx, c, info), nil
 }
 
-// FromNetConn upgrade an existing network connection to a process
-// (a net.Conn), returning a *Process.
+// FromNetConn upgrades an existing network connection to a Process.
 func FromNetConn(c net.Conn, info Info) *Process {
-	return &Process{
-		input:  c,
-		output: bufio.NewReader(c),
-		rwMu:   &sync.RWMutex{},
-		info:   info,
-		close: func() error {
-			return c.Close()
-		},
-	}
+	return FromNetConnCtx(context.Background(), c, info)
+}
+
+// FromNetConnCtx upgrades an existing network connection to a Process.
+//
+// Canceling the provided context.Context will trigger the Process.Close
+// method. Callers should explicitly call Process.Close when access to
+// the process is no longer required.
+func FromNetConnCtx(ctx context.Context, c net.Conn, info Info) *Process {
+	return FromIOCtx(ctx, c, c, info)
 }
 
 // FromNamedPipesOrExit attempts to connect to a process through a named pipe
@@ -179,9 +189,19 @@ func FromNamedPipesOrExit(inputPipePath string, outputPipePath string, info Info
 	return p
 }
 
-// FromNamedPipesOrExit attempts to connect to a process through a named pipe
-// using an input pipe path and output pipe path, returning a *Process.
+// FromNamedPipes attempts to connect to a process through a named pipe
+// using an input pipe path and output pipe path, returning a Process.
 func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Process, error) {
+	return FromNamedPipesCtx(context.Background(), inputPipePath, outputPipePath, info)
+}
+
+// FromNamedPipesCtx attempts to connect to a process through a named pipe
+// using an input pipe path and output pipe path, returning a Process.
+//
+// Canceling the provided context.Context will trigger the Process.Close
+// method. Callers should explicitly call Process.Close when access to
+// the process is no longer required.
+func FromNamedPipesCtx(ctx context.Context, inputPipePath string, outputPipePath string, info Info) (*Process, error) {
 	input, err := os.OpenFile(inputPipePath, os.O_WRONLY|syscall.O_NONBLOCK, os.ModeNamedPipe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open input pipe - %w", err)
@@ -193,26 +213,56 @@ func FromNamedPipes(inputPipePath string, outputPipePath string, info Info) (*Pr
 		return nil, fmt.Errorf("failed to open output pipe - %w", err)
 	}
 
-	return FromIO(input, output, info), nil
+	return FromIOCtx(ctx, input, output, info), nil
 }
 
 // FromIO attempts to connect to a process by using the specified input
-// and output, returning a *Process. For example, input and output can
+// and output, returning a Process. For example, input and output can
 // be two different named pipes accessed over ssh connections (refer to
 // Go Doc for example).
 func FromIO(input io.WriteCloser, output io.ReadCloser, info Info) *Process {
-	// TODO investigate using this function in other FromFunctions
-	return &Process{
-		input:  input,
-		output: bufio.NewReader(output),
-		rwMu:   &sync.RWMutex{},
-		info:   info,
-		close: func() error {
-			_ = input.Close()
-			_ = output.Close()
-			return nil
-		},
+	return FromIOCtx(context.Background(), input, output, info)
+}
+
+// FromIOCtx attempts to connect to a process by using the specified input
+// and output, returning a Process. For example, input and output can
+// be two different named pipes accessed over ssh connections (refer to
+// Go Doc for example).
+//
+// Canceling the provided context.Context will trigger the Process.Close
+// method. Callers should explicitly call Process.Close when access to
+// the process is no longer required.
+func FromIOCtx(ctx context.Context, input io.WriteCloser, output io.ReadCloser, info Info) *Process {
+	proc := &Process{
+		info: info,
 	}
+
+	outputTmp, outputIsWriter := output.(io.WriteCloser)
+	if outputIsWriter && input == outputTmp {
+		// Only close one of them because
+		// they are the same object.
+		proc.optClose = []io.Closer{input}
+	} else {
+		proc.optClose = []io.Closer{input, output}
+	}
+
+	proc.input = &procAwareWriter{
+		writer: input,
+		proc:   proc,
+	}
+
+	proc.output = &procAwareReader{
+		reader: bufio.NewReader(output),
+		proc:   proc,
+	}
+
+	go func() {
+		<-ctx.Done()
+
+		proc.setExited(ctx.Err())
+	}()
+
+	return proc
 }
 
 // X86_32Info creates a new Info for a X86 32-bit process.
@@ -243,22 +293,81 @@ type Info struct {
 
 // Process represents a running software process. The process can be
 // running on the same computer as this code, or on a networked neighbor.
-// The objective of this struct is to abstract inter-process communications
+// The objective of this struct is to abstract inter-process communication
 // into a simple API.
 //
-// Depending on the circumstances, callers should generally call
-// Process.Close after they are finished with the process.
+// Callers should call Process.Close after they are finished with the process.
 // Refer to the method's documentation for more information.
 type Process struct {
-	input  io.Writer
-	output *bufio.Reader
-	close  func() error
-	rwMu   *sync.RWMutex
-	exited exitInfo
-	info   Info
+	info      Info
+	input     *procAwareWriter
+	output    *procAwareReader
+	optKillFn func() error
+	optOnExit <-chan struct{}
+	optClose  []io.Closer
+	rwMu      sync.RWMutex
+	exited    exitInfo
 
 	loggerR *log.Logger
 	loggerW *log.Logger
+}
+
+// procAwareReader allows us to wrap a process' output io.Reader
+// with code that knows about the state of the process.
+//
+// Doing so allows us to coalesce all read operations into one place
+// while also making those operations aware of the process' state.
+type procAwareReader struct {
+	reader *bufio.Reader
+	proc   *Process
+}
+
+func (o *procAwareReader) Read(b []byte) (int, error) {
+	n, err := o.reader.Read(b)
+	if err != nil && o.proc.hasExitedWithWait() {
+		return n, o.proc.exited.err
+	}
+
+	return n, err
+}
+
+func (o *procAwareReader) ReadBytes(delim byte) ([]byte, error) {
+	b, err := o.reader.ReadBytes(delim)
+	if err != nil && o.proc.hasExitedWithWait() {
+		return b, o.proc.exited.err
+	}
+
+	return b, err
+}
+
+// procAwareWriter allows us to wrap a process' input io.Writer
+// with code that knows about the state of the process.
+//
+// Doing so allows us to coalesce all write operations into one place
+// while also making those operations aware of the process' state.
+type procAwareWriter struct {
+	writer io.Writer
+	proc   *Process
+}
+
+func (o *procAwareWriter) Write(b []byte) (int, error) {
+	n, err := o.writer.Write(b)
+	if err != nil && o.proc.hasExitedWithWait() {
+		return n, o.proc.exited.err
+	}
+
+	return n, err
+}
+
+func (o *Process) hasExitedWithWait() bool {
+	if o.optOnExit != nil {
+		select {
+		case <-time.After(time.Second):
+		case <-o.optOnExit:
+		}
+	}
+
+	return o.HasExited()
 }
 
 // Close releases any resources associated with the underlying software process
@@ -267,7 +376,36 @@ type Process struct {
 //
 // The Process is no longer usable once this method is invoked.
 func (o *Process) Close() error {
-	return o.close()
+	// TODO: Make this error a global variable at some point.
+	o.setExited(errors.New("process was closed by calling its close method"))
+
+	return o.exited.err
+}
+
+func (o *Process) setExited(reason error) {
+	o.rwMu.Lock()
+	defer o.rwMu.Unlock()
+
+	if o.exited.exited {
+		return
+	}
+
+	o.exited = exitInfo{
+		exited: true,
+		err:    reason,
+	}
+
+	if o.optKillFn != nil {
+		o.optKillFn()
+	}
+
+	for _, closer := range o.optClose {
+		closer.Close()
+	}
+
+	if o.optOnExit != nil {
+		<-o.optOnExit
+	}
 }
 
 // Bits returns the number of bits for the process' platform.
@@ -303,7 +441,7 @@ func (o *Process) ReadOrExit(b []byte) int {
 	return n
 }
 
-// Read reads from the processes output, implementing the io.Reader interface.
+// Read reads from the process' output, implementing the io.Reader interface.
 func (o *Process) Read(b []byte) (int, error) {
 	n, err := o.output.Read(b)
 
