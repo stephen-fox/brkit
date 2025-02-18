@@ -50,10 +50,10 @@ func mainWithError() error {
 		false,
 		"Repeatedly try shortening the fragment if it is not found in the pattern")
 
-	quiet := flag.Bool(
-		"q",
+	displayVisual := flag.Bool(
+		"v",
 		false,
-		"Only output the range without any visualization")
+		"Display a visualization of the fragment's location in the string")
 
 	flag.Parse()
 
@@ -136,7 +136,7 @@ func mainWithError() error {
 		infoStr := fmt.Sprintf("%d:%d (%d bytes)",
 			index, endIndex, fragmentLen)
 
-		if *quiet {
+		if !*displayVisual {
 			fmt.Println(infoStr)
 
 			return nil

@@ -29,7 +29,6 @@
 
 ## cmd/frag
 
-- Default to non-visualization behavior (current "-q" behavior)
 - Maybe try searching for fragment again if it is not found by reversing
   endianness?
 - Maybe look for multiple matches in pattern string instead of one?
