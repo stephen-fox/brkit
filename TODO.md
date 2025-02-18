@@ -11,7 +11,9 @@
 
 ## iokit
 
-- Add TrimEnd (or similarly named) method to remove n bytes from end
+- Buffer: Add TrimEnd (or similarly named) method to remove n bytes from end
+- Buffer: Add WriteSeveral / some builder-like methods that write bytes
+  and return the object back
 
 ## pattern
 
