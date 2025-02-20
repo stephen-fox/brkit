@@ -327,6 +327,10 @@ type procAwareReader struct {
 func (o *procAwareReader) Read(b []byte) (int, error) {
 	n, err := o.reader.Read(b)
 	if err != nil && o.proc.hasExitedWithWait() {
+		if o.proc.exited.err == nil {
+			return n, err
+		}
+
 		return n, o.proc.exited.err
 	}
 
@@ -336,6 +340,10 @@ func (o *procAwareReader) Read(b []byte) (int, error) {
 func (o *procAwareReader) ReadBytes(delim byte) ([]byte, error) {
 	b, err := o.reader.ReadBytes(delim)
 	if err != nil && o.proc.hasExitedWithWait() {
+		if o.proc.exited.err == nil {
+			return b, err
+		}
+
 		return b, o.proc.exited.err
 	}
 
@@ -355,6 +363,10 @@ type procAwareWriter struct {
 func (o *procAwareWriter) Write(b []byte) (int, error) {
 	n, err := o.writer.Write(b)
 	if err != nil && o.proc.hasExitedWithWait() {
+		if o.proc.exited.err == nil {
+			return n, err
+		}
+
 		return n, o.proc.exited.err
 	}
 
