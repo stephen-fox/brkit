@@ -95,6 +95,8 @@ func Exec(cmd *exec.Cmd, info Info) (*Process, error) {
 	go func() {
 		err := cmd.Wait()
 
+		close(onExited)
+
 		proc.setExited(err)
 	}()
 
