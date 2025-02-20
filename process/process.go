@@ -474,7 +474,11 @@ func (o *Process) Read(b []byte) (int, error) {
 		o.loggerR.Println("process: Read:\n" + hexDump)
 	}
 
-	return n, err
+	if err != nil {
+		return n, fmt.Errorf("failed to read from output stream - %w", err)
+	}
+
+	return n, nil
 }
 
 // ReadFromOrExit calls ReadFrom. It calls DefaultExitFn if an error occurs.
@@ -607,7 +611,7 @@ func (o *Process) ReadUntil(p []byte) ([]byte, error) {
 
 		_, err := o.output.Read(bSlice)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read from output stream - %w", err)
 		}
 
 		b := bSlice[0]
@@ -695,7 +699,7 @@ func (o *Process) Write(p []byte) (int, error) {
 
 	n, err := o.input.Write(p)
 	if err != nil {
-		return n, fmt.Errorf("failed to write 0x%x - %w", p, err)
+		return n, fmt.Errorf("failed to write 0x%x to input stream - %w", p, err)
 	}
 
 	return n, nil
