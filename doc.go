@@ -1,4 +1,4 @@
-// Package brkit provides functionality for binary research.
+// Package brkit provides functionality for binary research and exploitation.
 //
 // APIs are separated into subpackages, and documented accordingly.
 //
