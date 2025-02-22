@@ -371,6 +371,20 @@ func (o *Buffer) WriteOrExit(b []byte) int {
 	return n
 }
 
+// RepeatBytes repeatedly writes a []byte to the Buffer the specified
+// number of times.
+func (o *Buffer) RepeatBytes(b []byte, num int) (int, error) {
+	n, err := o.Write(bytes.Repeat(b, num))
+	return n, err
+}
+
+// RepeatByte repeatedly writes a byte to the Buffer the specified
+// number of times.
+func (o *Buffer) RepeatByte(b byte, num int) (int, error) {
+	n, err := o.Write(bytes.Repeat([]byte{b}, num))
+	return n, err
+}
+
 // Write calls Buf.Write.
 func (o *Buffer) Write(b []byte) (int, error) {
 	if o.Buf == nil {
