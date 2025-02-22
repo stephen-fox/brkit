@@ -1,9 +1,10 @@
-package process
+package exprocess
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
@@ -11,12 +12,26 @@ import (
 
 // (\|) ._. (|/) <- mr. ferris was here
 
+// SshPgrepCtxArgs configures the SshPgrepCtx function.
 type SshPgrepCtxArgs struct {
-	Host            string
-	ProgramFileName string
+	// AddrPort is the address of the SSH server to connect to
+	// in the form of <host>:<port>.
+	AddrPort string
+
+	// ProcessExeName is the name of the process' executable
+	// that should be monitored.
+	ProcessExeName string
 }
 
+// SshPgrepCtx creates a context.Context that is marked as done
+// when a process on a SSH server exits. It uses the ssh and
+// pgrep programs to accomplish this.
 func SshPgrepCtx(ctx context.Context, args SshPgrepCtxArgs) (context.Context, func(), error) {
+	addr, port, err := net.SplitHostPort(args.AddrPort)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	shellScript := fmt.Sprintf(`#!/bin/sh
 
 while true
@@ -39,24 +54,24 @@ while ps -p "${pid}" > /dev/null
 do
   sleep 1
 done
+
 exit
 `,
-		args.ProgramFileName)
+		args.ProcessExeName)
 
 	newCtx, cancelFn := context.WithCancel(ctx)
 
-	ssh := exec.CommandContext(newCtx,
-		"ssh",
-		args.Host)
+	ssh := exec.CommandContext(newCtx, "ssh", "-p", port, addr)
 
 	ssh.Stdin = strings.NewReader(shellScript)
 	ssh.Stdout = os.Stderr
 	ssh.Stderr = os.Stderr
 
-	err := ssh.Start()
+	err = ssh.Start()
 	if err != nil {
 		cancelFn()
-		return nil, nil, fmt.Errorf("failed to start ssh session - %w", err)
+
+		return nil, nil, fmt.Errorf("failed to start ssh process - %w", err)
 	}
 
 	go func() {
@@ -64,6 +79,7 @@ exit
 		if err != nil {
 			log.Println("ssh session exited with error -", err)
 		}
+
 		cancelFn()
 	}()
 
