@@ -5,13 +5,33 @@
 [godoc-badge]: https://pkg.go.dev/badge/gitlab.com/stephen-fox/brkit
 [godoc]: https://pkg.go.dev/gitlab.com/stephen-fox/brkit
 
-Package brkit provides functionality for binary research.
+Package brkit provides functionality for binary research and exploitation.
 
-brkit was originally developed as a collection of small command line utilities.
-It eventually expanded into a library that mimics the functionality of Python
-`pwntools`. The overriding goal of this project is to help solve hacking CTF
-challenges. The API is open-minded in the sense it can be used (responsibly)
-for non-CTF work.
+brkit was originally developed as a collection of small command line tools.
+It eventually expanded into a library that mimics the functionality of
+[Python `pwntools`][pwntools].
+
+[pwntools]: https://docs.pwntools.com/en/stable/
+
+## Goals
+
+The overriding goal of this project is to help solve hacking CTF challenges,
+specifically the binary exploitation variety. The library's APIs are
+open-minded in the sense it can be used (responsibly) for non-CTF work.
+
+Beyond that, the project tries to adhere to the following goals:
+
+- Make developing exploits for low-level vulnerabilities more accessible
+- Rely solely on the Go standard library. Use child Go modules as a last
+  resort if external dependencies are unavoidable
+- Leverage Go's type system as frequently as possible
+- Provide APIs whose intent can be understood without a fancy IDE or having
+  deep institutional knowledge of the codebase
+- Focus on providing "LEGO-like" building blocks that can be easily bolted
+  together (i.e., follow the [Unix philosophy][unix-philosophy] of small,
+  composable tools)
+
+[unix-philosophy]: https://en.wikipedia.org/wiki/Unix_philosophy
 
 ## APIs
 
