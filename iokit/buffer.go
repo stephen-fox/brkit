@@ -10,7 +10,7 @@ import (
 )
 
 // Buffer wraps the bytes.Buffer type, adding additional features such as
-// logging and "OrExit" methods.
+// logging and helper methods.
 type Buffer struct {
 	// Buf is the internal bytes.Buffer. It is automatically
 	// instantiated by the struct's methods if it is nil.
