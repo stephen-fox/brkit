@@ -70,6 +70,22 @@ func (o *Buffer) Reset() {
 	}
 }
 
+// TrimEnd removes the last n bytes from the Buffer.
+func (o *Buffer) TrimEnd(n int) {
+	if o.Buf != nil {
+		currentLen := o.Buf.Len()
+
+		switch {
+		case currentLen == 0:
+			return
+		case n > currentLen:
+			o.Buf.Truncate(0)
+		default:
+			o.Buf.Truncate(currentLen - n)
+		}
+	}
+}
+
 // Truncate calls Buf.Truncate.
 func (o *Buffer) Truncate(n int) {
 	if o.Buf != nil {
