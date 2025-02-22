@@ -145,9 +145,12 @@ func Dial(network string, address string, info Info) (*Process, error) {
 }
 
 // DialCtx attempts to connect to a remote process using the specified
-// network type and address, returning a Process which represents
-// the remote process. The network type string is the same set of
-// strings used for net.Dial.
+// context.Context, network type, and address, returning a Process which
+// represents the remote process. The network type string is the same set
+// of strings used for net.Dial.
+//
+// The context.Context is used both for establishing the connection and
+// for canceling the resulting Process.
 //
 // Canceling the provided context.Context will trigger the Process.Close
 // method. Callers should explicitly call Process.Close when access to
