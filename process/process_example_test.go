@@ -2,6 +2,7 @@ package process
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"flag"
 	"log"
@@ -41,6 +42,18 @@ func ExampleDial() {
 	proc.WriteLine([]byte("hello world"))
 }
 
+func ExampleDialCtx() {
+	ctx := context.Background()
+
+	proc, err := DialCtx(ctx, "tcp4", "192.168.1.2:8080", X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	proc.WriteLine([]byte("hello world"))
+}
+
 func ExampleFromNetConn() {
 	c, err := net.Dial("tcp", "192.168.1.2:8080")
 	if err != nil {
@@ -48,6 +61,20 @@ func ExampleFromNetConn() {
 	}
 
 	proc := FromNetConn(c, X86_64Info())
+	defer proc.Close()
+
+	proc.WriteLine([]byte("hello world"))
+}
+
+func ExampleFromNetConnCtx() {
+	c, err := net.Dial("tcp", "192.168.1.2:8080")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	ctx := context.Background()
+
+	proc := FromNetConnCtx(ctx, c, X86_64Info())
 	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
@@ -77,8 +104,21 @@ func ExampleFromNamedPipes() {
 	proc.Write([]byte("hello world"))
 }
 
+func ExampleFromNamedPipesCtx() {
+	ctx := context.Background()
+
+	proc, err := FromNamedPipesCtx(ctx, "/path/to/input.fifo", "/path/to/output.fifo", X86_64Info())
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer proc.Close()
+
+	proc.Write([]byte("hello world"))
+}
+
 func ExampleFromIO() {
 	flag.Parse()
+
 	sshHost := flag.Arg(1)
 	inputPipePath := flag.Arg(2)
 	outputPipePath := flag.Arg(3)
@@ -87,6 +127,24 @@ func ExampleFromIO() {
 	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
 
 	proc := FromIO(sshInput, sshOutput, X86_64Info())
+	defer proc.Close()
+
+	proc.Write([]byte("hello world"))
+}
+
+func ExampleFromIOCtx() {
+	flag.Parse()
+
+	sshHost := flag.Arg(1)
+	inputPipePath := flag.Arg(2)
+	outputPipePath := flag.Arg(3)
+
+	sshInput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath), X86_64Info())
+	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
+
+	ctx := context.Background()
+
+	proc := FromIOCtx(ctx, sshInput, sshOutput, X86_64Info())
 	defer proc.Close()
 
 	proc.Write([]byte("hello world"))
