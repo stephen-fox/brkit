@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -387,20 +388,6 @@ func (o *Buffer) WriteOrExit(b []byte) int {
 	return n
 }
 
-// RepeatBytes repeatedly writes a []byte to the Buffer the specified
-// number of times.
-func (o *Buffer) RepeatBytes(b []byte, num int) (int, error) {
-	n, err := o.Write(bytes.Repeat(b, num))
-	return n, err
-}
-
-// RepeatByte repeatedly writes a byte to the Buffer the specified
-// number of times.
-func (o *Buffer) RepeatByte(b byte, num int) (int, error) {
-	n, err := o.Write(bytes.Repeat([]byte{b}, num))
-	return n, err
-}
-
 // Write calls Buf.Write.
 func (o *Buffer) Write(b []byte) (int, error) {
 	if o.Buf == nil {
@@ -560,5 +547,23 @@ func (o *Buffer) WriteTo(w io.Writer) (int64, error) {
 		o.OptLoggerW.Println("iokit.buffer: write to:\n" + hexDump)
 	}
 
+	return n, err
+}
+
+// RepeatBytes repeatedly writes a []byte to the Buffer.
+func (o *Buffer) RepeatBytes(b []byte, count int) (int, error) {
+	n, err := o.Write(bytes.Repeat(b, count))
+	return n, err
+}
+
+// RepeatByte repeatedly writes a byte to the Buffer.
+func (o *Buffer) RepeatByte(b byte, count int) (int, error) {
+	n, err := o.Write(bytes.Repeat([]byte{b}, count))
+	return n, err
+}
+
+// RepeatString repeatedly writes a string to the Buffer.
+func (o *Buffer) RepeatString(str string, count int) (int, error) {
+	n, err := o.WriteString(strings.Repeat(str, count))
 	return n, err
 }
