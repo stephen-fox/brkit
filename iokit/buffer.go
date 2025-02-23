@@ -96,7 +96,7 @@ func (o *Buffer) Truncate(n int) {
 // Len calls Buf.Len.
 func (o *Buffer) Len() int {
 	if o.Buf == nil {
-		o.Buf = bytes.NewBuffer(nil)
+		return 0
 	}
 
 	return o.Buf.Len()
