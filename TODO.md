@@ -9,11 +9,9 @@
 - Add a global library that sets the DefaultExitFn and exit on error
   behavior for all brkit libraries
 
-## iokit
+## memory
 
-- Buffer: Add TrimEnd (or similarly named) method to remove n bytes from end
-- Buffer: Add WriteSeveral / some builder-like methods that write bytes
-  and return the object back
+- PointerMaker (maybe?): Optionally log pointers as they are created
 
 ## pattern
 
@@ -24,9 +22,6 @@
 
 ## process
 
-- Add "Ctx" functions (i.e., FromIOCtx) where the first argument takes
-  a `context.Context`. Use the Context.Done channel to make the process
-  "exit" by closing IO
 - Consider adding read/write timeouts / deadlines
 
 ## cmd/frag
