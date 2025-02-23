@@ -28,20 +28,11 @@ const (
 	deBruijnCharsLen = len(deBruijnChars)
 )
 
-// SomeBytesOrExit calls SomeBytes. It calls DefaultExitFn
-// if an error occurs.
-func (o *DeBruijn) SomeBytesOrExit(n int) []byte {
-	b, err := o.SomeBytes(n)
-	if err != nil {
-		DefaultExitFn(fmt.Errorf("pattern.debruijn: some bytes failed; %w", err))
-	}
-
-	return b
-}
-
-// SomeBytes returns n bytes of a de Bruijn pattern string as a []byte.
-func (o *DeBruijn) SomeBytes(n int) ([]byte, error) {
-	b := make([]byte, n)
+// Pattern generates the specified number of de Bruijn pattern
+// string characters as a []byte. Each byte in the slice is
+// a single, human-readable character in the pattern string.
+func (o *DeBruijn) Pattern(numBytes int) ([]byte, error) {
+	b := make([]byte, numBytes)
 
 	_, err := o.Read(b)
 	if err != nil {
