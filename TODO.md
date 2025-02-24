@@ -23,6 +23,7 @@
 ## process
 
 - Consider adding read/write timeouts / deadlines
+- Add sendLineAfter
 
 ## cmd/frag
 
