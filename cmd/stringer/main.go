@@ -28,9 +28,10 @@ const (
 	repeatStringArg = "repeat"
 	commentArg      = "comment"
 
-	hexFormat = "hex"
-	rawFormat = "raw"
-	b64Format = "b64"
+	hexFormat      = "hex"
+	rawFormat      = "raw"
+	b64Format      = "b64"
+	fromFileFormat = "file"
 
 	appName = "stringer"
 	usage   = appName + `
@@ -44,6 +45,7 @@ examples:
   ` + appName + ` 0x41 -` + patternArg + ` 200
   ` + appName + ` 0x080491e2 -` + wrongEndianArg + `
   ` + appName + ` 0x41 -` + repeatStringArg + ` 184 0x080491e2 -` + wrongEndianArg + `
+  ` + appName + ` -` + outputFormatArg + ` ` + hexFormat + ` /tmp/example.txt -` + inputFormatArg + ` ` + fromFileFormat + `
 
 main options:
 `
@@ -62,7 +64,7 @@ func mainWithError() error {
 	outputEncoding := flag.String(
 		outputFormatArg,
 		rawFormat,
-		fmt.Sprintf("The output encoding type (%s)", supportedIOEncodingStr()))
+		fmt.Sprintf("The output encoding type (%s)", outputTypesStr()))
 
 	printPatternStrings := flag.Bool(
 		printPatternsArg,
@@ -130,12 +132,13 @@ func mainWithError() error {
 
 func newStringFlagsConfig() *stringFlagsConfig {
 	set := flag.NewFlagSet("string manipulation options", flag.ExitOnError)
+
 	return &stringFlagsConfig{
 		set: set,
 		inputEncoding: set.String(
 			inputFormatArg,
 			hexFormat,
-			fmt.Sprintf("The input encoding type (%s)", supportedIOEncodingStr())),
+			fmt.Sprintf("The input encoding type (%s)", inputTypesStr())),
 		repeatString: set.Uint(
 			repeatStringArg,
 			0,
@@ -155,8 +158,14 @@ func newStringFlagsConfig() *stringFlagsConfig {
 	}
 }
 
-func supportedIOEncodingStr() string {
-	return fmt.Sprintf("'%s', '%s', '%s'", b64Format, hexFormat, rawFormat)
+func inputTypesStr() string {
+	return fmt.Sprintf("'%s', '%s', '%s', '%s'",
+		b64Format, hexFormat, rawFormat, fromFileFormat)
+}
+
+func outputTypesStr() string {
+	return fmt.Sprintf("'%s', '%s', '%s'",
+		b64Format, hexFormat, rawFormat)
 }
 
 type stringFlagsConfig struct {
@@ -179,21 +188,31 @@ func processNextString(remainingOSArgs []string, db *pattern.DeBruijn) (*process
 	if remainingOSArgsLen == 0 {
 		return nil, fmt.Errorf("please specify an input value")
 	}
+
 	stringFlags := newStringFlagsConfig()
 	stringFlags.set.Parse(remainingOSArgs[1:])
 
+	inputValue := remainingOSArgs[0]
+
 	var value []byte
 	var err error
+
 	switch *stringFlags.inputEncoding {
 	case rawFormat:
-		value = []byte(remainingOSArgs[0])
+		value = []byte(inputValue)
 	case b64Format:
-		value, err = base64.StdEncoding.DecodeString(remainingOSArgs[0])
+		value, err = base64.StdEncoding.DecodeString(inputValue)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64 decode value - %s", err)
 		}
+	case fromFileFormat:
+		value, err = os.ReadFile(inputValue)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read input from file '%s' - %w",
+				inputValue, err)
+		}
 	default:
-		value, err = hex.DecodeString(strings.TrimPrefix(remainingOSArgs[0], "0x"))
+		value, err = hex.DecodeString(strings.TrimPrefix(inputValue, "0x"))
 		if err != nil {
 			return nil, fmt.Errorf("failed to hex decode value - %s", err)
 		}
