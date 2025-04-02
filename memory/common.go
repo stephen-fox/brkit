@@ -4,7 +4,7 @@ import "log"
 
 // ProcessIO abstracts the input/output of a running software process.
 type ProcessIO interface {
-	// WriteLine appends a new line character to the specified []byte
+	// WriteLine appends a newline character to the specified []byte
 	// and writes it to the process' input.
 	WriteLine(p []byte) error
 

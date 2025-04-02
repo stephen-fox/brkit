@@ -44,7 +44,7 @@ OUTER:
 				case nil:
 					continue OUTER
 				default:
-					return nil, fmt.Errorf("failed to find new line char for line comment - %w", err)
+					return nil, fmt.Errorf("failed to find newline char for line comment - %w", err)
 				}
 			case '*':
 				_, err := bufferedSource.ReadByte()

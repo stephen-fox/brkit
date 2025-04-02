@@ -542,7 +542,7 @@ func (o *Process) ReadLineOrExit() []byte {
 }
 
 // ReadLine blocks and attempts to read from the process' output until
-// a new line character is found. It returns what was read from the
+// a newline character is found. It returns what was read from the
 // Process including the delimiter.
 func (o *Process) ReadLine() ([]byte, error) {
 	return o.ReadUntilChar('\n')
@@ -666,7 +666,7 @@ func (o *Process) WriteLineOrExit(p []byte) {
 	}
 }
 
-// WriteLine appends a new line character to the specified []byte
+// WriteLine appends a newline character to the specified []byte
 // and writes it to the process' input.
 func (o *Process) WriteLine(p []byte) error {
 	_, err := o.Write(append(p, '\n'))
