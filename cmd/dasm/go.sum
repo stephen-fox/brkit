@@ -1,0 +1,9 @@
+gitlab.com/stephen-fox/brkit v0.3.0 h1:X6O/q3En7usR5cLTf75nADP+7YmRwh/R6CL+VXU4BwQ=
+gitlab.com/stephen-fox/brkit v0.3.0/go.mod h1:Mudp7iixclDrsi4LgboEbYPapStdIfztGN+of08J58g=
+golang.org/x/arch v0.0.0-20210308155006-05f8f0431f72 h1:CdaLHkic8S6xdhpWgHmtWij2rv2DTGwPuJZjjEDGk2w=
+golang.org/x/arch v0.0.0-20210308155006-05f8f0431f72/go.mod h1:flIaEI6LNU6xOCD5PaJvn9wGP0agmIOqjrtsKGRguv4=
+golang.org/x/arch v0.9.0 h1:ub9TgUInamJ8mrZIGlBG6/4TqWeMszd4N8lNorbrr6k=
+golang.org/x/arch v0.9.0/go.mod h1:FEVrYAQjsQXMVJ1nsMoVVXPZg6p2JE2mx8psSWTDQys=
+golang.org/x/arch v0.14.0 h1:z9JUEZWr8x4rR0OU6c4/4t6E6jOZ8/QBS2bBYBm4tx4=
+golang.org/x/arch v0.14.0/go.mod h1:FEVrYAQjsQXMVJ1nsMoVVXPZg6p2JE2mx8psSWTDQys=
+rsc.io/pdf v0.1.1/go.mod h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
