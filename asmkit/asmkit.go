@@ -10,31 +10,59 @@ import (
 )
 
 const (
-	SkipSyntax  DisassemblySyntax = ""
-	ATTSyntax   DisassemblySyntax = "att"
-	GoSyntax    DisassemblySyntax = "go"
-	IntelSyntax DisassemblySyntax = "intel"
+	// SkipSyntax tells the assembler/disassembler to skip assembly
+	// or disassembly.
+	SkipSyntax AssemblySyntax = "skip"
+
+	// ATTSyntax tells the assembler/disassembler to use AT&T syntax.
+	// You should feel bad for using this setting:
+	//
+	// https://outerproduct.net/2021-02-13_att-asm.html
+	ATTSyntax AssemblySyntax = "att"
+
+	// GoSyntax tells the assembler/Disassembler to use Go syntax.
+	GoSyntax AssemblySyntax = "go"
+
+	// IntelSyntax tells the assembler/disassembler to use Intel syntax.
+	IntelSyntax AssemblySyntax = "intel"
 )
 
-type DisassemblySyntax string
+// AssemblySyntax is the assembly syntax to use.
+type AssemblySyntax string
 
+// DisassemblerConfig configures a Disassembler.
 type DisassemblerConfig struct {
-	Src        io.Reader
-	Syntax     DisassemblySyntax
+	// Src is the io.Reader to read binary CPU instructions from.
+	Src io.Reader
+
+	// Syntax is the AssemblySyntax to disassemble into.
+	Syntax AssemblySyntax
+
+	// ArchConfig is the architecture-specific configuration
+	// to use.
+	//
+	// This can be ArmConfig or X86Config.
 	ArchConfig interface{}
 }
 
+// X86Config configures the assembler/disassembler for a x86 CPU.
 type X86Config struct {
+	// Bits is the number of bits (e.g., 32 or 64).
 	Bits int
 }
 
+// ArmConfig configures the assembler/disassembler for an ARM CPU.
 type ArmConfig struct {
+	// Mode is the ARM mode.
+	//
+	// Refer to the golang.org/x/arch/arm/armasm Go library
+	// for more information.
 	Mode ArmMode
 }
 
-// A Mode is an instruction execution mode.
+// ArmMode is an instruction execution mode for ARM.
 //
-// This type allows callers to interoperate with golang.org/x/arch/x86/x86asm
+// This type allows callers to interoperate with golang.org/x/arch/arm/armasm
 // without forcing them to rely on it directly.
 type ArmMode int
 
@@ -42,11 +70,13 @@ func (o ArmMode) toArmasmMode() armasm.Mode {
 	return armasm.Mode(o)
 }
 
+// These ArmModes provide interoperability with golang.org/x/arch/arm/armasm.
 const (
 	ModeARM   = ArmMode(armasm.ModeARM)
 	ModeThumb = ArmMode(armasm.ModeThumb)
 )
 
+// NewDisassembler instantiates a new Disassembler.
 func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 	if config.Src == nil {
 		return nil, errors.New("source reader is nil")
@@ -82,7 +112,7 @@ func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 			return Inst{
 				Binary:      instBin,
 				Len:         armInst.Len,
-				Disass:      disassembly,
+				Assembly:    disassembly,
 				ArchLibInst: armInst,
 			}, nil
 		}
@@ -123,7 +153,7 @@ func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 			return Inst{
 				Binary:      instBin,
 				Len:         x86Inst.Len,
-				Disass:      disassembly,
+				Assembly:    disassembly,
 				ArchLibInst: x86Inst,
 			}, nil
 		}
@@ -154,6 +184,7 @@ func copySlice(src []byte, numBytes int) []byte {
 	return cp
 }
 
+// Disassembler disassembles CPU instructions using a bufio.Scanner-like API.
 type Disassembler struct {
 	reader          io.Reader
 	optComments     lastComment
@@ -170,6 +201,8 @@ type lastComment interface {
 	LastComment() ([]byte, bool)
 }
 
+// All disassembles all CPU instructions from the underlying io.Reader,
+// calling onDecodeFn for each instruction it successfully diassembles.
 func (o *Disassembler) All(onDecodeFn func(Inst) error) error {
 	for o.Next() {
 		last := o.Inst()
@@ -177,7 +210,7 @@ func (o *Disassembler) All(onDecodeFn func(Inst) error) error {
 		err := onDecodeFn(last)
 		if err != nil {
 			return fmt.Errorf("on decode function failed (%q) - %w",
-				last.Disass, err)
+				last.Assembly, err)
 		}
 	}
 
@@ -189,6 +222,7 @@ func (o *Disassembler) All(onDecodeFn func(Inst) error) error {
 	return nil
 }
 
+// Err returns the last error or nil if no error has occurred.
 func (o *Disassembler) Err() error {
 	if o.err != nil {
 		return o.err
@@ -197,10 +231,17 @@ func (o *Disassembler) Err() error {
 	return nil
 }
 
+// Inst returns the last-parsed instruction.
 func (o *Disassembler) Inst() Inst {
 	return o.last
 }
 
+// Next disassembles the next CPU instruction from the underlying io.Reader
+// and returns true if an instruction was successfully parsed. It returns
+// false if an instruction could not be read or disassembly failed.
+//
+// Callers should check the error returned by Err if this method returns
+// false.
 func (o *Disassembler) Next() bool {
 	return o.next()
 }
@@ -281,15 +322,29 @@ func (o *Disassembler) read() error {
 	return nil
 }
 
+// Inst represents a CPU instruction.
 type Inst struct {
-	Binary      []byte
-	Len         int
-	Index       int
-	Disass      string
-	Comment     string
-	ArchLibInst interface{}
-}
+	// Binary is the instruction in binary format.
+	Binary []byte
 
-func isDone(rawInstructions []byte, index int) bool {
-	return index >= len(rawInstructions)-1
+	// Len is the length of the instruction in bytes.
+	Len int
+
+	// Index is the zero-based index number of the instruction.
+	Index int
+
+	// Assembly is the instruction in human-readable format.
+	Assembly string
+
+	// Comment is an optional comment.
+	//
+	// If this Inst was generated by a Disassembler and the
+	// underlying io.Reader provides a method to retreive
+	// the last comment, then this field will contain any
+	// associated comments.
+	Comment string
+
+	// ArchLibInst is the instruction object provided by
+	// the golang.org/x/arch library.
+	ArchLibInst interface{}
 }
