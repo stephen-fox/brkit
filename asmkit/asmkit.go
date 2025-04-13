@@ -52,7 +52,7 @@ func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 		return nil, errors.New("source reader is nil")
 	}
 
-	reader := config.Src
+	var disassOneInstFn func(remainingInsts []byte) (Inst, error)
 
 	switch assertedConfig := config.ArchConfig.(type) {
 	case ArmConfig:
@@ -66,29 +66,26 @@ func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 			return nil, fmt.Errorf("unsupported syntax type for arm: %q", config.Syntax)
 		}
 
-		return &Disassembler{
-			reader: reader,
-			disassOneInstFn: func(remainingInsts []byte) (Inst, error) {
-				armInst, err := armasm.Decode(remainingInsts, assertedConfig.Mode.toArmasmMode())
-				if err != nil {
-					return Inst{}, err
-				}
+		disassOneInstFn = func(remainingInsts []byte) (Inst, error) {
+			armInst, err := armasm.Decode(remainingInsts, assertedConfig.Mode.toArmasmMode())
+			if err != nil {
+				return Inst{}, err
+			}
 
-				var disassembly string
-				if dissassemFn != nil {
-					disassembly = dissassemFn(armInst)
-				}
+			var disassembly string
+			if dissassemFn != nil {
+				disassembly = dissassemFn(armInst)
+			}
 
-				instBin := copySlice(remainingInsts, armInst.Len)
+			instBin := copySlice(remainingInsts, armInst.Len)
 
-				return Inst{
-					Bin:  instBin,
-					Len:  armInst.Len,
-					Dis:  disassembly,
-					Inst: armInst,
-				}, nil
-			},
-		}, nil
+			return Inst{
+				Binary:      instBin,
+				Len:         armInst.Len,
+				Disass:      disassembly,
+				ArchLibInst: armInst,
+			}, nil
+		}
 	case X86Config:
 		var disassemblyFn func(inst x86asm.Inst) string
 		switch config.Syntax {
@@ -110,32 +107,43 @@ func NewDisassembler(config DisassemblerConfig) (*Disassembler, error) {
 			return nil, fmt.Errorf("unsupported syntax type for x86: %q", config.Syntax)
 		}
 
-		return &Disassembler{
-			reader: reader,
-			disassOneInstFn: func(remainingInsts []byte) (Inst, error) {
-				x86Inst, err := x86asm.Decode(remainingInsts, assertedConfig.Bits)
-				if err != nil {
-					return Inst{}, err
-				}
+		disassOneInstFn = func(remainingInsts []byte) (Inst, error) {
+			x86Inst, err := x86asm.Decode(remainingInsts, assertedConfig.Bits)
+			if err != nil {
+				return Inst{}, err
+			}
 
-				var disassembly string
-				if disassemblyFn != nil {
-					disassembly = disassemblyFn(x86Inst)
-				}
+			var disassembly string
+			if disassemblyFn != nil {
+				disassembly = disassemblyFn(x86Inst)
+			}
 
-				instBin := copySlice(remainingInsts, x86Inst.Len)
+			instBin := copySlice(remainingInsts, x86Inst.Len)
 
-				return Inst{
-					Bin:  instBin,
-					Len:  x86Inst.Len,
-					Dis:  disassembly,
-					Inst: x86Inst,
-				}, nil
-			},
-		}, nil
+			return Inst{
+				Binary:      instBin,
+				Len:         x86Inst.Len,
+				Disass:      disassembly,
+				ArchLibInst: x86Inst,
+			}, nil
+		}
 	default:
 		return nil, fmt.Errorf("unsupported config type: %T", assertedConfig)
 	}
+
+	var optCommentReader lastComment
+
+	cm, isCommentReader := config.Src.(lastComment)
+	if isCommentReader {
+		optCommentReader = cm
+	}
+
+	return &Disassembler{
+		reader:          config.Src,
+		optComments:     optCommentReader,
+		disassOneInstFn: disassOneInstFn,
+		hasMore:         true,
+	}, nil
 }
 
 func copySlice(src []byte, numBytes int) []byte {
@@ -148,21 +156,28 @@ func copySlice(src []byte, numBytes int) []byte {
 
 type Disassembler struct {
 	reader          io.Reader
+	optComments     lastComment
 	disassOneInstFn func(remainingInsts []byte) (Inst, error)
 	last            Inst
 	buf             []byte
 	readerDone      bool
 	index           int
-	isDone          bool
+	hasMore         bool
 	err             error
+}
+
+type lastComment interface {
+	LastComment() ([]byte, bool)
 }
 
 func (o *Disassembler) All(onDecodeFn func(Inst) error) error {
 	for o.Next() {
-		err := onDecodeFn(o.last)
+		last := o.Inst()
+
+		err := onDecodeFn(last)
 		if err != nil {
-			return fmt.Errorf("instruction %d - on decode function failed (%q) - %w",
-				o.index, o.last.Dis, err)
+			return fmt.Errorf("on decode function failed (%q) - %w",
+				last.Disass, err)
 		}
 	}
 
@@ -191,27 +206,22 @@ func (o *Disassembler) Next() bool {
 }
 
 func (o *Disassembler) next() bool {
-	if o.err != nil || o.isDone {
+	if o.err != nil || !o.hasMore {
 		return false
 	}
 
 	inst, hasMore, err := o.parseNext()
 	if err != nil {
-		o.err = fmt.Errorf("instruction %d - %w",
-			o.index, err)
+		o.err = fmt.Errorf("instruction %d - %w", o.index, err)
 
 		return false
 	}
 
 	o.last = inst
 
-	if hasMore {
-		return true
-	}
+	o.hasMore = hasMore
 
-	o.isDone = true
-
-	return false
+	return true
 }
 
 func (o *Disassembler) parseNext() (Inst, bool, error) {
@@ -227,6 +237,13 @@ func (o *Disassembler) parseNext() (Inst, bool, error) {
 	inst, err := o.disassOneInstFn(o.buf)
 	if err != nil {
 		return Inst{}, false, fmt.Errorf("disassembly failed - %w", err)
+	}
+
+	if o.optComments != nil {
+		comment, hasComment := o.optComments.LastComment()
+		if hasComment {
+			inst.Comment = string(comment)
+		}
 	}
 
 	o.buf = o.buf[inst.Len:]
@@ -265,11 +282,12 @@ func (o *Disassembler) read() error {
 }
 
 type Inst struct {
-	Bin   []byte
-	Len   int
-	Index int
-	Dis   string
-	Inst  interface{}
+	Binary      []byte
+	Len         int
+	Index       int
+	Disass      string
+	Comment     string
+	ArchLibInst interface{}
 }
 
 func isDone(rawInstructions []byte, index int) bool {
