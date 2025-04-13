@@ -1,3 +1,5 @@
+// dasm is a simple diassembler for CPU instructions in various
+// encoding formats.
 package main
 
 import (
@@ -49,12 +51,24 @@ const (
 		"', '" + goDisassFormat + "'"
 
 	appName = "dasm"
-	usage   = appName + `
-DESCRIPTION
-  TODO
+
+	usage = `DESCRIPTION
+  ` + appName + ` is a simple diassembler for CPU instructions in various
+  encoding formats. It was originally created to gauge the
+  trustworthiness of shellcode from other users.
 
 USAGE
   ` + appName + ` [options] ` + armPlatform + `|` + x86_32Platform + `|` + x86_64Platform + ` < some-file
+
+SUPPORTED INPUT FORMATS
+  ` + inputFormats + `
+
+  Note: '` + hexFormat + `' means both hex chars or a C-style hex array body
+
+SUPPORTED OUTPUT FORMATS
+  ` + outputFormats + `
+
+  Note: '` + goDisassFormat + `' means a Go []byte
 
 EXAMPLES:
   Note: The following examples use shellcode written by Charles Stevenson
@@ -100,22 +114,30 @@ func mainWithError() error {
 	inputFormat := flag.String(
 		inputFormatArg,
 		hexFormat,
-		"The input data format. Supported input formats are:\n"+inputFormats+"\n")
+		"The input data `format`. Supported input formats are:\n"+inputFormats+"\n")
 
 	outputFormat := flag.String(
 		outputFormatArg,
 		prettyDisassFormat,
-		"The output data format. Suppported output formats are:\n"+outputFormats+"\n")
+		"The output data `format`. Suppported output formats are:\n"+outputFormats+"\n")
 
 	syntax := flag.String(
 		asmSyntaxArg,
 		intelSyntax,
-		"The desired assembly syntax. Supported syntaxes are:\n"+syntaxes+"\n")
+		"The desired assembly `syntax`. Supported syntaxes are:\n"+syntaxes+"\n")
 
 	flag.Parse()
 
 	if *help {
-		os.Stderr.WriteString(usage)
+		out := os.Stderr
+
+		stdoutInfo, err := os.Stdout.Stat()
+		if err == nil && stdoutInfo.Mode()&os.ModeNamedPipe != 0 {
+			out = os.Stdout
+		}
+
+		flag.CommandLine.SetOutput(out)
+		out.WriteString(usage)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
