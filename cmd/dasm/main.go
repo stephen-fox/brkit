@@ -25,18 +25,28 @@ const (
 	attSyntax   = "att"
 	goSyntax    = "go"
 
-	hexFormat = "hex"
-	rawFormat = "raw"
-	b64Format = "b64"
-
-	prettyFormat      = "pretty"
-	jsonDisassFormat  = "json"
-	jsonVerboseFormat = "jsonv"
-	goFormat          = "go"
+	syntaxes = "'" + intelSyntax + "', '" + attSyntax + "', " + goSyntax + "'"
 
 	x86_32Platform = "x86_32"
 	x86_64Platform = "x86_64"
 	armPlatform    = "arm"
+
+	hexFormat = "hex"
+	rawFormat = "raw"
+	b64Format = "b64"
+
+	prettyDisassFormat      = "pretty"
+	jsonDisassFormat        = "json"
+	jsonVerboseDisassFormat = "jsonv"
+	goDisassFormat          = "go"
+
+	inputFormats = "'" + rawFormat + "', '" + hexFormat +
+		"', '" + b64Format + "'"
+
+	outputFormats = "'" + rawFormat + "', '" + hexFormat +
+		"', '" + b64Format + "', '" + prettyDisassFormat +
+		"', '" + jsonDisassFormat + "', '" + jsonVerboseDisassFormat +
+		"', '" + goDisassFormat + "'"
 
 	appName = "dasm"
 	usage   = appName + `
@@ -60,7 +70,7 @@ EXAMPLES:
     int 0x80
 
   Disassemble the previous example into a Go []byte:
-    $ ` + appName + ` -` + outputFormatArg + ` ` + goFormat + ` ` + x86_32Platform + ` < exit-1.hex
+    $ ` + appName + ` -` + outputFormatArg + ` ` + goDisassFormat + ` ` + x86_32Platform + ` < exit-1.hex
     []byte {
         0x31, 0xc0, // xor eax, eax
         0x40, // inc eax
@@ -90,17 +100,17 @@ func mainWithError() error {
 	inputFormat := flag.String(
 		inputFormatArg,
 		hexFormat,
-		"The input data format")
+		"The input data format. Supported input formats are:\n"+inputFormats+"\n")
 
 	outputFormat := flag.String(
 		outputFormatArg,
-		prettyFormat,
-		"")
+		prettyDisassFormat,
+		"The output data format. Suppported output formats are:\n"+outputFormats+"\n")
 
 	syntax := flag.String(
 		asmSyntaxArg,
 		intelSyntax,
-		"The desired assembly syntax")
+		"The desired assembly syntax. Supported syntaxes are:\n"+syntaxes+"\n")
 
 	flag.Parse()
 
@@ -136,12 +146,12 @@ func mainWithError() error {
 	}
 
 	switch *inputFormat {
-	case b64Format:
-		config.Src = base64.NewDecoder(base64.StdEncoding, os.Stdin)
-	case hexFormat:
-		config.Src = conv.HexArrayReaderFrom(os.Stdin)
 	case rawFormat:
 		config.Src = os.Stdin
+	case hexFormat:
+		config.Src = conv.NewHexArrayReader(os.Stdin)
+	case b64Format:
+		config.Src = base64.NewDecoder(base64.StdEncoding, os.Stdin)
 	default:
 		return fmt.Errorf("unknown input format: %q", *inputFormat)
 	}
@@ -155,7 +165,7 @@ func mainWithError() error {
 	var writer instWriter
 
 	switch *outputFormat {
-	case prettyFormat:
+	case prettyDisassFormat:
 		writer = &disassWriter{
 			w: output,
 		}
@@ -174,12 +184,12 @@ func mainWithError() error {
 			indent: "  ",
 			w:      output,
 		}
-	case jsonVerboseFormat:
+	case jsonVerboseDisassFormat:
 		writer = &jsonVerboseWriter{
 			indent: "  ",
 			w:      output,
 		}
-	case goFormat:
+	case goDisassFormat:
 		writer = &goByteSliceWriter{
 			w: output,
 		}
@@ -221,7 +231,19 @@ type disassWriter struct {
 }
 
 func (o *disassWriter) Write(inst asmkit.Inst) error {
-	_, err := o.w.Write([]byte(inst.Dis + "\n"))
+	_, err := o.w.Write([]byte(inst.Disass))
+	if err != nil {
+		return err
+	}
+
+	if inst.Comment != "" {
+		_, err = o.w.Write([]byte([]byte(" ;" + inst.Comment)))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = o.w.Write([]byte([]byte{'\n'}))
 	if err != nil {
 		return err
 	}
@@ -241,7 +263,7 @@ type encoderWriter struct {
 }
 
 func (o *encoderWriter) Write(inst asmkit.Inst) error {
-	_, err := o.encoder.Write([]byte(inst.Dis))
+	_, err := o.encoder.Write([]byte(inst.Disass))
 	if err != nil {
 		return err
 	}
@@ -275,7 +297,7 @@ type jsonDisassWriter struct {
 }
 
 func (o *jsonDisassWriter) Write(inst asmkit.Inst) error {
-	o.buf = append(o.buf, inst.Dis)
+	o.buf = append(o.buf, inst.Disass)
 
 	return nil
 }
@@ -347,14 +369,26 @@ func (o *goByteSliceWriter) Write(inst asmkit.Inst) error {
 		return err
 	}
 
-	for _, b := range inst.Bin {
+	for _, b := range inst.Binary {
 		_, err = fmt.Fprintf(o.w, "0x%x, ", b)
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = o.w.Write([]byte([]byte("// " + inst.Dis + "\n")))
+	_, err = o.w.Write([]byte([]byte("// " + inst.Disass)))
+	if err != nil {
+		return err
+	}
+
+	if inst.Comment != "" {
+		_, err = o.w.Write([]byte([]byte(" ;" + inst.Comment)))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = o.w.Write([]byte([]byte{'\n'}))
 	if err != nil {
 		return err
 	}
