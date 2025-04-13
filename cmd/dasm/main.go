@@ -68,7 +68,10 @@ SUPPORTED INPUT FORMATS
 SUPPORTED OUTPUT FORMATS
   ` + outputFormats + `
 
-  Note: '` + goDisassFormat + `' means a Go []byte
+  Notes:
+    - '` + goDisassFormat + `' means a Go []byte
+    - '` + hexFormat + `' and '` + b64Format + `' will contain the instructions in binary
+      format (not the human-readble assembly instructions)
 
 EXAMPLES:
   Note: The following examples use shellcode written by Charles Stevenson
@@ -148,7 +151,7 @@ func mainWithError() error {
 	}
 
 	config := asmkit.DisassemblerConfig{
-		Syntax: asmkit.DisassemblySyntax(*syntax),
+		Syntax: asmkit.AssemblySyntax(*syntax),
 	}
 
 	platform := flag.Arg(0)
@@ -253,7 +256,7 @@ type disassWriter struct {
 }
 
 func (o *disassWriter) Write(inst asmkit.Inst) error {
-	_, err := o.w.Write([]byte(inst.Disass))
+	_, err := o.w.Write([]byte(inst.Assembly))
 	if err != nil {
 		return err
 	}
@@ -285,7 +288,7 @@ type encoderWriter struct {
 }
 
 func (o *encoderWriter) Write(inst asmkit.Inst) error {
-	_, err := o.encoder.Write([]byte(inst.Disass))
+	_, err := o.encoder.Write([]byte(inst.Binary))
 	if err != nil {
 		return err
 	}
@@ -319,7 +322,7 @@ type jsonDisassWriter struct {
 }
 
 func (o *jsonDisassWriter) Write(inst asmkit.Inst) error {
-	o.buf = append(o.buf, inst.Disass)
+	o.buf = append(o.buf, inst.Assembly)
 
 	return nil
 }
@@ -398,7 +401,7 @@ func (o *goByteSliceWriter) Write(inst asmkit.Inst) error {
 		}
 	}
 
-	_, err = o.w.Write([]byte([]byte("// " + inst.Disass)))
+	_, err = o.w.Write([]byte([]byte("// " + inst.Assembly)))
 	if err != nil {
 		return err
 	}
