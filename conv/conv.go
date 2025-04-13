@@ -18,7 +18,7 @@ import (
 // it can also be used to parse hex pairs from the command line using
 // flag.Args.
 func HexArrayToBytes(source io.Reader) ([]byte, error) {
-	reader := HexArrayReaderFrom(source)
+	reader := NewHexArrayReader(source)
 	buf := bytes.NewBuffer(nil)
 
 	_, err := io.Copy(buf, reader)
@@ -34,7 +34,10 @@ func HexArrayToBytes(source io.Reader) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func HexArrayReaderFrom(r io.Reader) io.Reader {
+// NewHexArrayReader returns an io.Reader implementation that converts
+// a C array containing hex-encoded data into chunks of []byte which
+// represent the hex-decoded array data.
+func NewHexArrayReader(r io.Reader) io.Reader {
 	return &hexArrayReader{
 		bufferedSrc: bufio.NewReader(r),
 	}
