@@ -44,6 +44,52 @@ The following subsections outline the various sub-packages and their usage.
 Please refer to the Go doc documentation for detailed explanations and
 usage examples.
 
+#### `asmkit`
+
+Package asmkit provides functionality for working with assembly.
+
+Note: This library uses its own Go module, meaning users must explicitly
+add the library's module to their `go.mod` file:
+
+```sh
+go get gitlab.com/stephen-fox/brkit/asmkit@latest
+```
+
+For example, the following hex-encoded shellcode can be disassembled
+using the `Disassembler` type:
+
+```go
+func ExampleDisassembler() {
+        // exit(1) syscall shellcode by Charles Stevenson:
+        // http://shell-storm.org/shellcode/files/shellcode-55.php
+        hexEncodedInsts := "31c04089c3cd80"
+
+        disass, err := asmkit.NewDisassembler(asmkit.DisassemblerConfig{
+                Src:        hex.NewDecoder(strings.NewReader(hexEncodedInsts)),
+                Syntax:     asmkit.IntelSyntax,
+                ArchConfig: asmkit.X86Config{Bits: 32},
+        })
+        if err != nil {
+                log.Fatalf("failed to create disassembler - %v", err)
+        }
+
+        for disass.Next() {
+                fmt.Println(disass.Inst().Assembly)
+        }
+
+        err = disass.Err()
+        if err != nil {
+                log.Fatalf("disassembler failed - %v", err)
+        }
+
+        // Output:
+        // xor eax, eax
+        // inc eax
+        // mov ebx, eax
+        // int 0x80
+}
+```
+
 #### `bstruct`
 
 Package bstruct provides functionality for converting data structures
@@ -260,16 +306,20 @@ field values, or by calling the constructor-like helper functions.
 
 Several command line utilities are included to aid in binary research efforts.
 
-#### `fromhex`
+#### `dasm`
 
-Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
-the underlying binary data into another encoding.
+A very simple disassembler that supports various encoding formats.
 
 #### `frag`
 
 Finds fragments in pattern strings. Useful for understanding how a payload
 overwrites process state (e.g., finding the offset of a payload fragment in
 a variable that was overwritten by a stack-based buffer overflow).
+
+#### `fromhex`
+
+Decodes hex-encoded data (e.g., "\x31\xc0\x40\x89\xc3\xcd\x80") and encodes
+the underlying binary data into another encoding.
 
 #### `stringer`
 
