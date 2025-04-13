@@ -11,7 +11,7 @@ import (
 )
 
 // CArrayToGoSlice converts the contents of a C programming language
-// read from r into a Go []byte declaration string.
+// file read from r into a Go []byte declaration string.
 //
 // It preserves comments and sequences of bytes.
 func CArrayToGoSlice(r io.Reader, w io.Writer) error {
@@ -31,7 +31,7 @@ func CArrayToGoSlice(r io.Reader, w io.Writer) error {
 		return fmt.Errorf("failed to find blobs in reader - %w", err)
 	}
 
-	// numExtraChars represets how:
+	// numExtraChars represents how:
 	// - we append "0x"
 	// - we append a comma
 	const numExtraChars = 3
@@ -235,8 +235,8 @@ func (o Blob) isEmpty() bool {
 	return len(o.Bytes) == 0 && len(o.Comment) == 0
 }
 
-// CArrayToBlobs converts a C programming language array to
-// to a series of Blob objects.
+// CArrayToBlobs converts a C programming language array
+// into a series of Blob objects.
 func CArrayToBlobs(source io.Reader, onBlobFn func(Blob) error) error {
 	bufioReader := bufio.NewReader(source)
 	needEndOfComment := false
