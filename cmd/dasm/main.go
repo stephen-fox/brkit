@@ -13,7 +13,6 @@ import (
 
 	"gitlab.com/stephen-fox/brkit/asmkit"
 	"gitlab.com/stephen-fox/brkit/conv"
-	"golang.org/x/arch/arm/armasm"
 )
 
 const (
@@ -53,15 +52,15 @@ EXAMPLES:
   http://shell-storm.org/shellcode/files/shellcode-55.php
 
   Disassemble shellcode:
-    $ echo "\x31\xc0\x40\x89\xc3\xcd\x80" > exit-1.bin
-    $ ` + appName + ` ` + x86_32Platform + ` < exit-1.bin
+    $ echo "\x31\xc0\x40\x89\xc3\xcd\x80" > exit-1.hex
+    $ ` + appName + ` ` + x86_32Platform + ` < exit-1.hex
     xor eax, eax
     inc eax
     mov ebx, eax
     int 0x80
 
   Disassemble the previous example into a Go []byte:
-    $ ` + appName + ` -` + outputFormatArg + ` ` + goFormat + ` ` + x86_32Platform + ` < exit-1.bin
+    $ ` + appName + ` -` + outputFormatArg + ` ` + goFormat + ` ` + x86_32Platform + ` < exit-1.hex
     []byte {
         0x31, 0xc0, // xor eax, eax
         0x40, // inc eax
@@ -124,8 +123,7 @@ func mainWithError() error {
 
 	switch platform {
 	case armPlatform:
-		// TODO: Can we remove armasm.ModeARM?
-		config.ArchConfig = asmkit.ARMConfig{Mode: armasm.ModeARM}
+		config.ArchConfig = asmkit.ArmConfig{Mode: asmkit.ModeARM}
 	case x86_32Platform, x86_64Platform:
 		bits := 32
 		if platform == x86_64Platform {
@@ -134,34 +132,23 @@ func mainWithError() error {
 
 		config.ArchConfig = asmkit.X86Config{Bits: bits}
 	default:
-		return fmt.Errorf("unsupported platform: '%s'", platform)
+		return fmt.Errorf("unsupported platform: %q", platform)
+	}
+
+	switch *inputFormat {
+	case b64Format:
+		config.Src = base64.NewDecoder(base64.StdEncoding, os.Stdin)
+	case hexFormat:
+		config.Src = conv.HexArrayReaderFrom(os.Stdin)
+	case rawFormat:
+		config.Src = os.Stdin
+	default:
+		return fmt.Errorf("unknown input format: %q", *inputFormat)
 	}
 
 	disassembler, err := asmkit.NewDisassembler(config)
 	if err != nil {
-		return fmt.Errorf("failed to create new decoder for - %s", err)
-	}
-
-	var binaryInsts []byte
-	switch *inputFormat {
-	case b64Format:
-		b64Str, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("failed to read base64 data from stdin - %s", err)
-		}
-
-		binaryInsts = make([]byte, base64.StdEncoding.DecodedLen(len(b64Str)))
-
-		_, err = base64.StdEncoding.Decode(binaryInsts, b64Str)
-	case hexFormat:
-		binaryInsts, err = conv.HexArrayToBytes(os.Stdin)
-	case rawFormat:
-		binaryInsts, err = io.ReadAll(os.Stdin)
-	default:
-		err = fmt.Errorf("unknown input format: %q", *inputFormat)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read %q instructions - %s", *inputFormat, err)
+		return fmt.Errorf("failed to create new disassembler - %w", err)
 	}
 
 	output := bytes.NewBuffer(nil)
@@ -201,7 +188,7 @@ func mainWithError() error {
 			*outputFormat)
 	}
 
-	err = disassembler.All(binaryInsts, func(inst asmkit.Inst) error {
+	err = disassembler.All(func(inst asmkit.Inst) error {
 		return writer.Write(inst)
 	})
 	if err != nil {
