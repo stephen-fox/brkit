@@ -42,6 +42,7 @@ func HexArrayReaderFrom(r io.Reader) io.Reader {
 
 type hexArrayReader struct {
 	bufferedSrc *bufio.Reader
+	comments    [][]byte
 }
 
 func (o *hexArrayReader) Read(p []byte) (int, error) {
@@ -50,6 +51,8 @@ func (o *hexArrayReader) Read(p []byte) (int, error) {
 	bytesWritten := 0
 
 	tmp := bytes.Buffer{}
+
+	commentBuf := bytes.Buffer{}
 
 outer:
 	for bytesWritten < avail {
@@ -66,9 +69,20 @@ outer:
 		if b == '/' {
 			err := findComment(findCommentConfig{
 				bufferedSrc: o.bufferedSrc,
+				optDst:      &commentBuf,
 			})
 			if err != nil {
 				return bytesWritten, err
+			}
+
+			if commentBuf.Len() > 0 {
+				cp := make([]byte, commentBuf.Len())
+
+				copy(cp, commentBuf.Bytes())
+
+				o.comments = append(o.comments, cp)
+
+				commentBuf.Reset()
 			}
 
 			continue
@@ -93,6 +107,26 @@ outer:
 	}
 
 	return bytesWritten, nil
+}
+
+func (o *hexArrayReader) LastComment() ([]byte, bool) {
+	if len(o.comments) == 0 {
+		return nil, false
+	}
+
+	head := o.comments[0]
+
+	commentCopy := make([]byte, len(head))
+
+	copy(commentCopy, head)
+
+	if len(o.comments) > 1 {
+		o.comments = o.comments[1:]
+	} else {
+		o.comments = nil
+	}
+
+	return commentCopy, true
 }
 
 type commentDebugWriter struct {
