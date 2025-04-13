@@ -119,17 +119,9 @@ func (o *hexArrayReader) LastComment() ([]byte, bool) {
 
 	head := o.comments[0]
 
-	commentCopy := make([]byte, len(head))
+	o.comments = o.comments[1:]
 
-	copy(commentCopy, head)
-
-	if len(o.comments) > 1 {
-		o.comments = o.comments[1:]
-	} else {
-		o.comments = nil
-	}
-
-	return commentCopy, true
+	return head, true
 }
 
 type commentDebugWriter struct {
