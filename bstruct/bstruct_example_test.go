@@ -1,4 +1,4 @@
-package bstruct
+package bstruct_test
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"gitlab.com/stephen-fox/brkit/bstruct"
 )
 
 func ExampleToBytesX86() {
@@ -18,7 +20,7 @@ func ExampleToBytesX86() {
 
 	buf := bytes.NewBuffer(nil)
 
-	err := ToBytesX86(FieldWriterFn(buf), example{
+	err := bstruct.ToBytesX86(bstruct.FieldWriterFn(buf), example{
 		Counter:  666,
 		SomePtr:  0xc0ded00d,
 		Register: 0xfabfabdd,
@@ -42,11 +44,14 @@ func ExampleToBytes() {
 
 	buf := bytes.NewBuffer(nil)
 
-	err := ToBytes(binary.LittleEndian, GoFieldOrder, FieldWriterFn(buf), example{
-		Counter:  666,
-		SomePtr:  0xc0ded00d,
-		Register: 0xfabfabdd,
-	})
+	err := bstruct.ToBytes(
+		binary.LittleEndian,
+		bstruct.GoFieldOrder,
+		bstruct.FieldWriterFn(buf), example{
+			Counter:  666,
+			SomePtr:  0xc0ded00d,
+			Register: 0xfabfabdd,
+		})
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -57,7 +62,7 @@ func ExampleToBytes() {
 	// 0x9a020dd0dec0ddabbffa
 }
 
-func ExampleToBytes_WithLogging() {
+func ExampleToBytes_with_logging() {
 	type example struct {
 		Counter  uint16
 		SomePtr  uint32
@@ -66,11 +71,14 @@ func ExampleToBytes_WithLogging() {
 
 	logger := log.New(os.Stdout, "", 0)
 
-	err := ToBytes(binary.LittleEndian, GoFieldOrder, FieldWriterFn(io.Discard, logger), example{
-		Counter:  666,
-		SomePtr:  0xc0ded00d,
-		Register: 0xfabfabdd,
-	})
+	err := bstruct.ToBytes(
+		binary.LittleEndian,
+		bstruct.GoFieldOrder,
+		bstruct.FieldWriterFn(io.Discard, logger), example{
+			Counter:  666,
+			SomePtr:  0xc0ded00d,
+			Register: 0xfabfabdd,
+		})
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -1,21 +1,22 @@
-package iokit
+package iokit_test
 
 import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 
+	"gitlab.com/stephen-fox/brkit/iokit"
 	"gitlab.com/stephen-fox/brkit/memory"
 )
 
-func ExampleNewPayloadBuilder() {
+func ExamplePayloadBuilder() {
 	pm := memory.PointerMakerForX86_64()
 
 	examplePointer := pm.FromUint(0x7ffac0ded00d)
 
 	examplePatternGen := &examplePatternGenerator{}
 
-	payload := NewPayloadBuilder().
+	payload := iokit.NewPayloadBuilder().
 		RepeatString("A", 8*2).
 		String("zerocool").
 		Pattern(examplePatternGen, 16).

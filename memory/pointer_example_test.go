@@ -1,13 +1,15 @@
-package memory
+package memory_test
 
 import (
 	"encoding/binary"
 	"fmt"
 	"log"
+
+	"gitlab.com/stephen-fox/brkit/memory"
 )
 
 func ExamplePointerMaker_ParseUintPrefix() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer, err := pm.ParseUintPrefix("0xdeadbeef", 16, "0x")
 	if err != nil {
@@ -20,7 +22,7 @@ func ExamplePointerMaker_ParseUintPrefix() {
 }
 
 func ExamplePointerMaker_ParseUint() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer, err := pm.ParseUint("deadbeef", 16)
 	if err != nil {
@@ -33,7 +35,7 @@ func ExamplePointerMaker_ParseUint() {
 }
 
 func ExamplePointerMaker_FromHexString() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer, err := pm.FromHexString("0xdeadbeef", binary.BigEndian)
 	if err != nil {
@@ -46,7 +48,7 @@ func ExamplePointerMaker_FromHexString() {
 }
 
 func ExamplePointerMaker_FromHexBytes() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer, err := pm.FromHexBytes([]byte("0xdeadbeef"), binary.BigEndian)
 	if err != nil {
@@ -59,7 +61,7 @@ func ExamplePointerMaker_FromHexBytes() {
 }
 
 func ExamplePointerMaker_FromUint() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer := pm.FromUint(0xdeadbeef)
 
@@ -69,7 +71,7 @@ func ExamplePointerMaker_FromUint() {
 }
 
 func ExamplePointerMaker_FromRawBytes() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer, err := pm.FromRawBytes([]byte{0xde, 0xad, 0xbe, 0xef}, binary.BigEndian)
 	if err != nil {
@@ -82,7 +84,7 @@ func ExamplePointerMaker_FromRawBytes() {
 }
 
 func ExamplePointer_Bytes() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer := pm.FromUint(0xdeadbeef)
 
@@ -92,7 +94,7 @@ func ExamplePointer_Bytes() {
 }
 
 func ExamplePointer_Uint() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer := pm.FromUint(0xdeadbeef)
 
@@ -101,8 +103,8 @@ func ExamplePointer_Uint() {
 	// Output: 0xdeadbeef
 }
 
-func ExamplePointer_Uint_Math() {
-	pm := PointerMakerForX86_32()
+func ExamplePointer_Uint_math() {
+	pm := memory.PointerMakerForX86_32()
 
 	initial := pm.FromUint(0xdeadbeef)
 
@@ -114,7 +116,7 @@ func ExamplePointer_Uint_Math() {
 }
 
 func ExamplePointer_HexString() {
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	pointer := pm.FromUint(0xdeadbeef)
 

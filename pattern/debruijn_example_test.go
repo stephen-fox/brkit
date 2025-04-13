@@ -1,13 +1,15 @@
-package pattern
+package pattern_test
 
 import (
 	"io"
 	"log"
 	"os"
+
+	"gitlab.com/stephen-fox/brkit/pattern"
 )
 
 func ExampleDeBruijn_WriteToN() {
-	db := &DeBruijn{}
+	db := &pattern.DeBruijn{}
 
 	err := db.WriteToN(os.Stdout, 16)
 	if err != nil {
@@ -30,10 +32,10 @@ func ExampleDeBruijn_WriteToN() {
 	// iaaajaaakaaalaaa
 }
 
-func ExampleDeBruijn_WriteToN_WritePatternToLogger() {
+func ExampleDeBruijn_WriteToN_write_pattern_to_logger() {
 	logger := log.New(os.Stdout, "", 0)
 
-	db := &DeBruijn{
+	db := &pattern.DeBruijn{
 		OptLogger: logger,
 	}
 

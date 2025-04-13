@@ -1,9 +1,13 @@
-package memory
+package memory_test
 
-import "fmt"
+import (
+	"fmt"
+
+	"gitlab.com/stephen-fox/brkit/memory"
+)
 
 func ExampleAddressTable() {
-	offsets := NewAddressTable("local").
+	offsets := memory.NewAddressTable("local").
 		AddSymbolInContext("ioFileJumps", 0x00000000003ebc30, "local").
 		AddSymbolInContext("ioFileJumps", 0x00000000003e82f0, "remote")
 

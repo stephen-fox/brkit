@@ -1,9 +1,13 @@
-package memory
+package memory_test
 
-import "log"
+import (
+	"log"
+
+	"gitlab.com/stephen-fox/brkit/memory"
+)
 
 func ExampleNewDPAFormatStringLeaker() {
-	leaker, err := NewDPAFormatStringLeaker(DPAFormatStringConfig{
+	leaker, err := memory.NewDPAFormatStringLeaker(memory.DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
@@ -15,7 +19,7 @@ func ExampleNewDPAFormatStringLeaker() {
 }
 
 func ExampleDPAFormatStringLeaker_FindParamNumber() {
-	leaker, err := NewDPAFormatStringLeaker(DPAFormatStringConfig{
+	leaker, err := memory.NewDPAFormatStringLeaker(memory.DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
@@ -35,8 +39,8 @@ func ExampleDPAFormatStringLeaker_FindParamNumber() {
 	log.Printf("target is at param. number: %d", paramNum)
 }
 
-func ExampleDPAFormatStringLeaker_MemoryAtParam() {
-	leaker, err := NewDPAFormatStringLeaker(DPAFormatStringConfig{
+func ExampleDPAFormatStringLeaker_RawPointerAtParam() {
+	leaker, err := memory.NewDPAFormatStringLeaker(memory.DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
@@ -53,7 +57,7 @@ func ExampleDPAFormatStringLeaker_MemoryAtParam() {
 }
 
 func ExampleSetupFormatStringLeakViaDPA() {
-	leaker, err := SetupFormatStringLeakViaDPA(DPAFormatStringConfig{
+	leaker, err := memory.SetupFormatStringLeakViaDPA(memory.DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
@@ -61,13 +65,13 @@ func ExampleSetupFormatStringLeakViaDPA() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_64()
+	pm := memory.PointerMakerForX86_64()
 
 	log.Printf("read: 0x%x", leaker.MemoryAtOrExit(pm.FromUint(0x00000000deadbeef)))
 }
 
 func ExampleFormatStringLeaker_MemoryAt() {
-	leaker, err := SetupFormatStringLeakViaDPA(DPAFormatStringConfig{
+	leaker, err := memory.SetupFormatStringLeakViaDPA(memory.DPAFormatStringConfig{
 		ProcessIO:    &fakeProcessIO{},
 		MaxNumParams: 200,
 	})
@@ -75,7 +79,7 @@ func ExampleFormatStringLeaker_MemoryAt() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_64()
+	pm := memory.PointerMakerForX86_64()
 
 	raw, err := leaker.MemoryAt(pm.FromUint(0x00000000deadbeef))
 	if err != nil {

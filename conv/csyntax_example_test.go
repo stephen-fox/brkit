@@ -1,10 +1,12 @@
-package conv
+package conv_test
 
 import (
 	"bytes"
 	"fmt"
 	"log"
 	"strings"
+
+	"gitlab.com/stephen-fox/brkit/conv"
 )
 
 func ExampleCArrayToGoSlice() {
@@ -29,7 +31,7 @@ func ExampleCArrayToGoSlice() {
 
 	output := bytes.NewBuffer(nil)
 
-	err := CArrayToGoSlice(example, output)
+	err := conv.CArrayToGoSlice(example, output)
 	if err != nil {
 		log.Fatalln(err)
 	}

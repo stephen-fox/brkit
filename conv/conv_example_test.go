@@ -1,16 +1,18 @@
-package conv
+package conv_test
 
 import (
 	"bytes"
 	"fmt"
 	"log"
+
+	"gitlab.com/stephen-fox/brkit/conv"
 )
 
 func ExampleHexArrayToBytes() {
 	// exit(1) syscall shellcode by Charles Stevenson:
 	// http://shell-storm.org/shellcode/files/shellcode-55.php
 	cArrayContents := []byte(
-`/*  _exit(1); linux/x86 by core */
+		`/*  _exit(1); linux/x86 by core */
 // 7 bytes _exit(1) ... 'cause we're nice >:) by core
 "\x31\xc0"              // xor  %eax,%eax
 "\x40"                  // inc  %eax
@@ -18,7 +20,7 @@ func ExampleHexArrayToBytes() {
 "\xcd\x80"              // int  $0x80
 `)
 
-	exit1Bytes, err := HexArrayToBytes(bytes.NewReader(cArrayContents))
+	exit1Bytes, err := conv.HexArrayToBytes(bytes.NewReader(cArrayContents))
 	if err != nil {
 		log.Fatalln(err)
 	}

@@ -1,11 +1,15 @@
-package memory
+package memory_test
 
-import "log"
+import (
+	"log"
+
+	"gitlab.com/stephen-fox/brkit/memory"
+)
 
 func ExampleSetupDPAFormatStringWriter() {
-	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
-		MaxWrite:  999,
-		DPAConfig: DPAFormatStringConfig{
+	writer, err := memory.SetupDPAFormatStringWriter(memory.DPAFormatStringWriterConfig{
+		MaxWrite: 999,
+		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
 			MaxNumParams: 200,
 		},
@@ -14,15 +18,15 @@ func ExampleSetupDPAFormatStringWriter() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	writer.WriteLowerFourBytesAtOrExit(100, pm.FromUint(0xdeadbeef))
 }
 
 func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
-	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
-		MaxWrite:  999,
-		DPAConfig: DPAFormatStringConfig{
+	writer, err := memory.SetupDPAFormatStringWriter(memory.DPAFormatStringWriterConfig{
+		MaxWrite: 999,
+		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
 			MaxNumParams: 200,
 		},
@@ -31,7 +35,7 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	// Set the lower four bytes to 1000 (0x03E8).
 	err = writer.WriteLowerFourBytesAt(1000, pm.FromUint(0xdeadbeef))
@@ -41,9 +45,9 @@ func ExampleDPAFormatStringWriter_WriteLowerFourBytesAt() {
 }
 
 func ExampleDPAFormatStringWriter_WriteLowerTwoBytesAt() {
-	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
-		MaxWrite:  999,
-		DPAConfig: DPAFormatStringConfig{
+	writer, err := memory.SetupDPAFormatStringWriter(memory.DPAFormatStringWriterConfig{
+		MaxWrite: 999,
+		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
 			MaxNumParams: 200,
 		},
@@ -52,7 +56,7 @@ func ExampleDPAFormatStringWriter_WriteLowerTwoBytesAt() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	// Set the lower two bytes to 666 (0x029A)
 	err = writer.WriteLowerTwoBytesAt(666, pm.FromUint(0xdeadbeef))
@@ -62,9 +66,9 @@ func ExampleDPAFormatStringWriter_WriteLowerTwoBytesAt() {
 }
 
 func ExampleDPAFormatStringWriter_WriteLowestByteAt() {
-	writer, err := SetupDPAFormatStringWriter(DPAFormatStringWriterConfig{
-		MaxWrite:  999,
-		DPAConfig: DPAFormatStringConfig{
+	writer, err := memory.SetupDPAFormatStringWriter(memory.DPAFormatStringWriterConfig{
+		MaxWrite: 999,
+		DPAConfig: memory.DPAFormatStringConfig{
 			ProcessIO:    &fakeProcessIO{},
 			MaxNumParams: 200,
 		},
@@ -73,7 +77,7 @@ func ExampleDPAFormatStringWriter_WriteLowestByteAt() {
 		log.Fatalln(err)
 	}
 
-	pm := PointerMakerForX86_32()
+	pm := memory.PointerMakerForX86_32()
 
 	// Set the lowest byte to 255 (0xFF).
 	err = writer.WriteLowestByteAt(255, pm.FromUint(0xdeadbeef))

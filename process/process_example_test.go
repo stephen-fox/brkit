@@ -1,4 +1,4 @@
-package process
+package process_test
 
 import (
 	"bytes"
@@ -8,12 +8,14 @@ import (
 	"log"
 	"net"
 	"os/exec"
+
+	"gitlab.com/stephen-fox/brkit/process"
 )
 
 func ExampleExec() {
 	cmd := exec.Command("cat")
 
-	proc, err := Exec(cmd, X86_64Info())
+	proc, err := process.Exec(cmd, process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -33,7 +35,7 @@ func ExampleExec() {
 }
 
 func ExampleDial() {
-	proc, err := Dial("tcp4", "192.168.1.2:8080", X86_64Info())
+	proc, err := process.Dial("tcp4", "192.168.1.2:8080", process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -45,7 +47,7 @@ func ExampleDial() {
 func ExampleDialCtx() {
 	ctx := context.Background()
 
-	proc, err := DialCtx(ctx, "tcp4", "192.168.1.2:8080", X86_64Info())
+	proc, err := process.DialCtx(ctx, "tcp4", "192.168.1.2:8080", process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -60,7 +62,7 @@ func ExampleFromNetConn() {
 		log.Fatalln(err)
 	}
 
-	proc := FromNetConn(c, X86_64Info())
+	proc := process.FromNetConn(c, process.X86_64Info())
 	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
@@ -74,13 +76,13 @@ func ExampleFromNetConnCtx() {
 
 	ctx := context.Background()
 
-	proc := FromNetConnCtx(ctx, c, X86_64Info())
+	proc := process.FromNetConnCtx(ctx, c, process.X86_64Info())
 	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
 
-func ExampleFromNetConn_FromTLSConnection() {
+func ExampleFromNetConn_from_tls_connection() {
 	tlsConn, err := tls.Dial("tcp", "192.168.1.2", &tls.Config{
 		ServerName: "example.com",
 	})
@@ -88,14 +90,17 @@ func ExampleFromNetConn_FromTLSConnection() {
 		log.Fatalln(err)
 	}
 
-	proc := FromNetConn(tlsConn, X86_64Info())
+	proc := process.FromNetConn(tlsConn, process.X86_64Info())
 	defer proc.Close()
 
 	proc.WriteLine([]byte("hello world"))
 }
 
 func ExampleFromNamedPipes() {
-	proc, err := FromNamedPipes("/path/to/input.fifo", "/path/to/output.fifo", X86_64Info())
+	proc, err := process.FromNamedPipes(
+		"/path/to/input.fifo",
+		"/path/to/output.fifo",
+		process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -107,7 +112,11 @@ func ExampleFromNamedPipes() {
 func ExampleFromNamedPipesCtx() {
 	ctx := context.Background()
 
-	proc, err := FromNamedPipesCtx(ctx, "/path/to/input.fifo", "/path/to/output.fifo", X86_64Info())
+	proc, err := process.FromNamedPipesCtx(
+		ctx,
+		"/path/to/input.fifo",
+		"/path/to/output.fifo",
+		process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -123,10 +132,15 @@ func ExampleFromIO() {
 	inputPipePath := flag.Arg(2)
 	outputPipePath := flag.Arg(3)
 
-	sshInput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath), X86_64Info())
-	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
+	sshInput := process.ExecOrExit(
+		exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath),
+		process.X86_64Info())
 
-	proc := FromIO(sshInput, sshOutput, X86_64Info())
+	sshOutput := process.ExecOrExit(
+		exec.Command("ssh", sshHost, "--", "cat", outputPipePath),
+		process.X86_64Info())
+
+	proc := process.FromIO(sshInput, sshOutput, process.X86_64Info())
 	defer proc.Close()
 
 	proc.Write([]byte("hello world"))
@@ -139,19 +153,24 @@ func ExampleFromIOCtx() {
 	inputPipePath := flag.Arg(2)
 	outputPipePath := flag.Arg(3)
 
-	sshInput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath), X86_64Info())
-	sshOutput := ExecOrExit(exec.Command("ssh", sshHost, "--", "cat", outputPipePath), X86_64Info())
+	sshInput := process.ExecOrExit(
+		exec.Command("ssh", sshHost, "--", "cat", ">", inputPipePath),
+		process.X86_64Info())
+
+	sshOutput := process.ExecOrExit(
+		exec.Command("ssh", sshHost, "--", "cat", outputPipePath),
+		process.X86_64Info())
 
 	ctx := context.Background()
 
-	proc := FromIOCtx(ctx, sshInput, sshOutput, X86_64Info())
+	proc := process.FromIOCtx(ctx, sshInput, sshOutput, process.X86_64Info())
 	defer proc.Close()
 
 	proc.Write([]byte("hello world"))
 }
 
 func ExampleProcess_Close() {
-	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -159,7 +178,7 @@ func ExampleProcess_Close() {
 }
 
 func ExampleProcess_Read() {
-	proc, err := Exec(exec.Command("cat", "/etc/passwd"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat", "/etc/passwd"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -176,7 +195,7 @@ func ExampleProcess_Read() {
 }
 
 func ExampleProcess_ReadFrom() {
-	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -189,7 +208,7 @@ func ExampleProcess_ReadFrom() {
 }
 
 func ExampleProcess_WriteLine() {
-	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -199,7 +218,7 @@ func ExampleProcess_WriteLine() {
 }
 
 func ExampleProcess_Write() {
-	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -209,7 +228,7 @@ func ExampleProcess_Write() {
 }
 
 func ExampleProcess_Interactive() {
-	proc, err := Exec(exec.Command("cat"), X86_64Info())
+	proc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 	if err != nil {
 		log.Fatalln(err)
 	}
