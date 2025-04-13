@@ -9,6 +9,12 @@
 - Add a global library that sets the DefaultExitFn and exit on error
   behavior for all brkit libraries
 
+## conv
+
+- Have HexArrayReaderFrom return an object that provides a method
+  that can return that last C comment it read
+- Rewrite CArrayToBlobs to support findComment function
+
 ## memory
 
 - PointerMaker (maybe?): Optionally log pointers as they are created
@@ -30,3 +36,12 @@
 - Maybe try searching for fragment again if it is not found by reversing
   endianness?
 - Maybe look for multiple matches in pattern string instead of one?
+
+## cmd/dasm
+
+- Include C comments with output if they are available (refer to conv
+  package TODOs in this file)
+
+## cmd/stringer
+
+- Add support for conv.HexArrayReaderFrom
