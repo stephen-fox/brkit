@@ -124,3 +124,27 @@ func ExamplePointer_HexString() {
 
 	// Output: 0xdeadbeef
 }
+
+func ExamplePointer_Offset_addition() {
+	pm := memory.PointerMakerForX86_32()
+
+	pointer := pm.FromUint(0xdeadbeef)
+
+	adjustedPointer := pointer.Offset(0x100)
+
+	fmt.Printf("0x%x", adjustedPointer.Uint())
+
+	// Output: 0xdeadbfef
+}
+
+func ExamplePointer_Offset_subtract() {
+	pm := memory.PointerMakerForX86_32()
+
+	pointer := pm.FromUint(0xdeadbeef)
+
+	adjustedPointer := pointer.Offset(-0x100)
+
+	fmt.Printf("0x%x", adjustedPointer.Uint())
+
+	// Output: 0xdeadbdef
+}

@@ -274,6 +274,41 @@ func (o Pointer) Uint() uint {
 	return o.address
 }
 
+// Offset returns a new Pointer after applying the given amount.
+func (o Pointer) Offset(amount int64) Pointer {
+	adjusted := o.address
+	switch {
+	case amount == 0:
+		return o
+	case amount > 0:
+		adjusted = adjusted + uint(amount)
+	case amount < 0:
+		adjusted = adjusted - uint(amount*-1)
+	}
+
+	numBytes := len(o.bytes)
+	b := make([]byte, numBytes)
+
+	switch numBytes {
+	case 1:
+		b[0] = uint8(adjusted)
+	case 2:
+		o.byteOrder.PutUint16(b, uint16(adjusted))
+	case 4:
+		o.byteOrder.PutUint32(b, uint32(adjusted))
+	case 8:
+		o.byteOrder.PutUint64(b, uint64(adjusted))
+	default:
+		panic(fmt.Sprintf("unsupported pointer length: %d", numBytes))
+	}
+
+	return Pointer{
+		byteOrder: o.byteOrder,
+		address:   adjusted,
+		bytes:     b,
+	}
+}
+
 // HexString returns a hex-encoded string representing the pointer,
 // prefixed with the "0x" string.
 //
