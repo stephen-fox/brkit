@@ -1,9 +1,9 @@
 package linuxkit
 
-// Sigcontext is the struct that is read by sigreturn(2).
-// It is useful for manipulating CPU registers using SROP
-// (Sigreturn-oriented programming).
-type Sigcontext struct {
+// SigcontextX86_64 is the struct that is read by sigreturn(2) on
+// x86 64-bit systems. It is useful for manipulating CPU registers
+// using SROP (Sigreturn-oriented programming).
+type SigcontextX86_64 struct {
 	IDK1    uint64
 	IDK2    uint64
 	IDK3    uint64
