@@ -332,7 +332,7 @@ These functions accept an `Info` struct which stores information about the
 process, such as its bits. These can be instantiated by specifying their
 field values, or by calling the constructor-like helper functions.
 
-## `scripting`
+#### `scripting`
 
 Package scripting provides functionality for writing exploit "scripts".
 
