@@ -673,6 +673,36 @@ func (o *Process) WriteLine(p []byte) error {
 	return err
 }
 
+// WriteLineAfter reads from the process until it receives the "after" []byte.
+// It then appends a newline to the "send" argument and writes the resulting
+// slice to the process.
+func (o *Process) WriteLineAfter(send []byte, after []byte) error {
+	sendWithNewline := append(send, '\n')
+
+	err := o.WriteAfter(sendWithNewline, after)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// WriteAfter reads from the process until it receives the "after" []byte.
+// It then writes the "send" argument to the process.
+func (o *Process) WriteAfter(send []byte, after []byte) error {
+	_, err := o.ReadUntil(after)
+	if err != nil {
+		return err
+	}
+
+	_, err = o.Write(send)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // WriteOrExit calls Process.Write, subsequently calling DefaultExitFn
 // if an error occurs.
 func (o *Process) WriteOrExit(p []byte) {
