@@ -274,6 +274,16 @@ func (o Pointer) Uint() uint {
 	return o.address
 }
 
+// Uint32 returns the pointer as an unsigned 32-bit integer.
+func (o Pointer) Uint32() uint32 {
+	return uint32(o.address)
+}
+
+// Uint32 returns the pointer as an unsigned 64-bit integer.
+func (o Pointer) Uint64() uint64 {
+	return uint64(o.address)
+}
+
 // Offset returns a new Pointer after applying the given amount.
 func (o Pointer) Offset(amount int64) Pointer {
 	adjusted := o.address
