@@ -46,7 +46,27 @@ func (o *PayloadBuilder) getEndianness(optOrder ...binary.ByteOrder) binary.Byte
 	}
 }
 
+// RepeatUint32 repeatedly writes the specified uint32 to the payload.
+//
+// The endianness can be specified by the optOrder argument.
+// If the optOrder argument is unspecified, the default
+// endianness set by SetEndianness will be used.
+func (o *PayloadBuilder) RepeatUint32(u uint32, count int, optOrder ...binary.ByteOrder) *PayloadBuilder {
+	bo := o.getEndianness(optOrder...)
+
+	b := make([]byte, 4)
+
+	bo.PutUint32(b, u)
+
+	for i := 0; i < count; i++ {
+		o.Bytes(b)
+	}
+
+	return o
+}
+
 // Uint32 writes an unsigned 32-bit integer to the payload.
+//
 // The endianness can be specified by the optOrder argument.
 // If the optOrder argument is unspecified, the default
 // endianness set by SetEndianness will be used.
@@ -62,7 +82,27 @@ func (o *PayloadBuilder) Uint32(u uint32, optOrder ...binary.ByteOrder) *Payload
 	return o
 }
 
+// RepeatUint64 repeatedly writes the specified uint64 to the payload.
+//
+// The endianness can be specified by the optOrder argument.
+// If the optOrder argument is unspecified, the default
+// endianness set by SetEndianness will be used.
+func (o *PayloadBuilder) RepeatUint64(u uint64, count int, optOrder ...binary.ByteOrder) *PayloadBuilder {
+	bo := o.getEndianness(optOrder...)
+
+	b := make([]byte, 8)
+
+	bo.PutUint64(b, u)
+
+	for i := 0; i < count; i++ {
+		o.Bytes(b)
+	}
+
+	return o
+}
+
 // Uint64 writes an unsigned 64-bit integer to the payload.
+//
 // The endianness can be specified by the optOrder argument.
 // If the optOrder argument is unspecified, the default
 // endianness set by SetEndianness will be used.
