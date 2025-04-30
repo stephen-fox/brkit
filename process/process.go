@@ -679,7 +679,7 @@ func (o *Process) WriteLine(p []byte) error {
 func (o *Process) WriteLineAfter(after []byte, send []byte) error {
 	sendWithNewline := append(send, '\n')
 
-	err := o.WriteAfter(sendWithNewline, after)
+	err := o.WriteAfter(after, sendWithNewline)
 	if err != nil {
 		return err
 	}
