@@ -43,8 +43,8 @@ func ParseExploitArgsCtx(ctx context.Context, config ParseExploitArgsConfig) (*p
 }
 
 type ExploitArgs struct {
-	StageNumber int
-	Verbose     *log.Logger
+	Stages  StageCtl
+	Verbose *log.Logger
 }
 
 type tempExploitArgs struct {
@@ -56,8 +56,8 @@ type tempExploitArgs struct {
 
 func (o tempExploitArgs) toExploitArgs(logger *log.Logger) ExploitArgs {
 	args := ExploitArgs{
-		StageNumber: o.stageNumber,
-		Verbose:     log.New(io.Discard, "", 0),
+		Stages:  StageCtl{Goto: o.stageNumber},
+		Verbose: log.New(io.Discard, "", 0),
 	}
 
 	if o.verboseLogging {
