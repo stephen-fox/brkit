@@ -172,3 +172,15 @@ func ExamplePointer_NonNullOrExit() {
 
 	// Output: pointer is non-null
 }
+
+func ExamplePointer_NonNullOrExit_with_description() {
+	pm := memory.PointerMakerForX86_32()
+
+	pointer := pm.FromUint(0xdeadbeef)
+
+	pointer.NonNullOrExit("deadbeef")
+
+	fmt.Println("pointer is non-null")
+
+	// Output: pointer is non-null
+}
