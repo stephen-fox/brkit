@@ -23,6 +23,10 @@ func ParseExploitArgs(config ParseExploitArgsConfig) *process.Process {
 		logger = config.OptLogger
 	}
 
+	if logger.Flags() == log.LstdFlags {
+		logger.SetFlags(0)
+	}
+
 	proc, err := parseExploitArgs(config)
 	if err != nil {
 		logger.Fatalln("fatal:", err)
@@ -36,10 +40,27 @@ const usage = `please specify one of the following:
   ssh SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH
   remote ADDRESS`
 
+type ExploitArgs struct {
+	Process     *process.Process
+	Help        bool
+	StageNumber int
+	Verbose     *log.Logger
+}
+
+type tempExploitArgs struct {
+	Help        bool
+	StageNumber int
+	Verbose     bool
+}
+
 func parseExploitArgs(config ParseExploitArgsConfig) (*process.Process, error) {
+	var exploitArgs tempExploitArgs
+
 	flagSet := flag.CommandLine
 	if config.OptFlagSet != nil {
 		flagSet = config.OptFlagSet
+	} else {
+		flagSet.BoolVar(&exploitArgs.Help, "h", false, "display this information")
 	}
 
 	if !flagSet.Parsed() {
