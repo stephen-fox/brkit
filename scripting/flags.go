@@ -199,8 +199,8 @@ OPTIONS
 	}
 
 	if tempArgs.enableProcLogging {
-		proc.SetLoggerR(log.New(logger.Writer(), "<", logger.Flags()))
-		proc.SetLoggerW(log.New(logger.Writer(), ">", logger.Flags()))
+		proc.SetLoggerR(log.New(logger.Writer(), "[<] ", logger.Flags()))
+		proc.SetLoggerW(log.New(logger.Writer(), "[>] ", logger.Flags()))
 	}
 
 	return proc, tempArgs.toExploitArgs(logger), nil
