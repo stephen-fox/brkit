@@ -261,6 +261,25 @@ type Pointer struct {
 	bytes     []byte
 }
 
+// NonNullOrExit calls DefaultExitFn if the pointer is null.
+//
+// An optional error message prefix can be provided using
+// the optPrefix argument.
+func (o Pointer) NonNullOrExit(optPrefix ...string) {
+	if o.IsNull() {
+		if len(optPrefix) > 0 {
+			DefaultExitFn(fmt.Errorf("%s: pointer is null", optPrefix[0]))
+		} else {
+			DefaultExitFn(errors.New("pointer is null"))
+		}
+	}
+}
+
+// IsNull returns true if the pointer is null (i.e., points to zero).
+func (o Pointer) IsNull() bool {
+	return o.address == 0
+}
+
 // Bytes returns the pointer as a []byte in the endianness of the target
 // platform with the correct padding.
 func (o Pointer) Bytes() []byte {

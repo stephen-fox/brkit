@@ -148,3 +148,27 @@ func ExamplePointer_Offset_subtract() {
 
 	// Output: 0xdeadbdef
 }
+
+func ExamplePointer_IsNull() {
+	pm := memory.PointerMakerForX86_32()
+
+	pointer := pm.FromUint(0x00)
+
+	if pointer.IsNull() {
+		fmt.Println("pointer is null")
+	}
+
+	// Output: pointer is null
+}
+
+func ExamplePointer_NonNullOrExit() {
+	pm := memory.PointerMakerForX86_32()
+
+	pointer := pm.FromUint(0xdeadbeef)
+
+	pointer.NonNullOrExit()
+
+	fmt.Println("pointer is non-null")
+
+	// Output: pointer is non-null
+}
