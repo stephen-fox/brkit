@@ -20,9 +20,9 @@ func ExampleParseExploitArgs_help_output() {
 
 		// Note: The following fields are only required for
 		// this example code.
-		OptOsArgs:  []string{"example", "-h"},
-		OptFlagSet: flag.NewFlagSet("example", flag.ExitOnError),
-		OptModFlag: func(flagSet *flag.FlagSet) {
+		OptOsArgs:      []string{"example", "-h"},
+		OptMainFlagSet: flag.NewFlagSet("example", flag.ExitOnError),
+		OptModMainFlagSet: func(flagSet *flag.FlagSet) {
 			flagSet.SetOutput(os.Stdout)
 		},
 		OptExitFn: func(int) {},
@@ -33,9 +33,10 @@ func ExampleParseExploitArgs_help_output() {
 	//   A brkit-based exploit.
 	//
 	// USAGE
-	//   example [options] local EXE-PATH
-	//   example [options] ssh SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH
-	//   example [options] remote ADDRESS
+	//   example -h
+	//   example local EXE-PATH [options]
+	//   example ssh SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH [options]
+	//   example remote ADDRESS [options]
 	//
 	// OPTIONS
 	//   -V	Log all process input and output
