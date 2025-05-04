@@ -28,10 +28,9 @@ func ParseExploitArgsCtx(ctx context.Context, config ParseExploitArgsConfig) (*p
 	logger := log.Default()
 	if config.OptLogger != nil {
 		logger = config.OptLogger
-	}
-
-	if logger.Flags() == log.LstdFlags {
+	} else {
 		logger.SetFlags(0)
+		logger.SetPrefix("[+] ")
 	}
 
 	proc, args, err := parseExploitArgs(ctx, logger, config)
