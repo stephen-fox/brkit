@@ -34,9 +34,9 @@ func ExampleParseExploitArgs_help_output() {
 	//
 	// USAGE
 	//   example -h
-	//   example local EXE-PATH [options]
+	//   example exec EXE-PATH [options]
 	//   example ssh SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH [options]
-	//   example remote ADDRESS [options]
+	//   example dial ADDRESS [options]
 	//
 	// OPTIONS
 	//   -V	Log all process input and output
