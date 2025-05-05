@@ -356,12 +356,9 @@ func (o exploitFlags) toExploitArgs(logger *log.Logger) ExploitArgs {
 
 // parseExploitArgs parses the arguments passed to the exploit program.
 func parseExploitArgs(ctx context.Context, logger *log.Logger, config ParseExploitArgsConfig) (*process.Process, ExploitArgs, error) {
-	if config.ProcInfo.PlatformBits == 0 {
-		return nil, ExploitArgs{}, errors.New("the provided process.ProcInfo's PlatformBits is zero")
-	}
-
-	if config.ProcInfo.PtrSizeBytes == 0 {
-		return nil, ExploitArgs{}, errors.New("the provided process.ProcInfo's PtrSizeBytes is zero")
+	err := config.ProcInfo.IsValid()
+	if err != nil {
+		return nil, ExploitArgs{}, fmt.Errorf("the provided process.Info is invalid - %w", err)
 	}
 
 	mainFlagSet := flag.CommandLine
