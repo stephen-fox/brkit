@@ -289,11 +289,11 @@ func X86_64Info() Info {
 // Info specifies platform information about the process.
 type Info struct {
 	// PlatformBits is the number of CPU bits (e.g., 32).
-	PlatformBits int
+	PlatformBits uint
 
 	// PtrSizeBytes is the size of a pointer in bytes on
 	// the target system.
-	PtrSizeBytes int
+	PtrSizeBytes uint
 }
 
 // IsValid returns a non-nil error if the Info is invalid.
@@ -439,13 +439,13 @@ func (o *Process) setExited(reason error) {
 }
 
 // Bits returns the number of bits for the process' platform.
-func (o *Process) Bits() int {
+func (o *Process) Bits() uint {
 	return o.info.PlatformBits
 }
 
 // PointerSizeBytes returns the size of a pointer for the
 // process' platform in bytes.
-func (o *Process) PointerSizeBytes() int {
+func (o *Process) PointerSizeBytes() uint {
 	return o.info.PtrSizeBytes
 }
 
