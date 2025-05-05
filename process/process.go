@@ -296,6 +296,19 @@ type Info struct {
 	PtrSizeBytes int
 }
 
+// IsValid returns a non-nil error if the Info is invalid.
+func (o Info) IsValid() error {
+	if o.PlatformBits == 0 {
+		return errors.New("PlatformBits is zero")
+	}
+
+	if o.PtrSizeBytes == 0 {
+		return errors.New("PtrSizeBytes is zero")
+	}
+
+	return nil
+}
+
 // Process represents a running software process. The process can be
 // running on the same computer as this code, or on a networked neighbor.
 // The objective of this struct is to abstract inter-process communication
