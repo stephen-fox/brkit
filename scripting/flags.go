@@ -14,6 +14,12 @@ import (
 	"gitlab.com/stephen-fox/brkit/process"
 )
 
+const (
+	execMode     = "exec"
+	sshPipesMode = "ssh"
+	dialMode     = "dial"
+)
+
 type ParseExploitArgsConfig struct {
 	ProcInfo             process.Info
 	OptExecArgs          []string
@@ -60,9 +66,9 @@ OPTIONS
 
 func (o ParseExploitArgsConfig) usage(optName string) string {
 	const helpUsage = "-h"
-	const localUsage = "local EXE-PATH [options]"
-	const sshPipesUsage = "ssh SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH [options]"
-	const remoteUsage = "remote ADDRESS [options]"
+	const localUsage = execMode + " EXE-PATH [options]"
+	const sshPipesUsage = sshPipesMode + " SSH-SERVER-ADDRESS STD-PIPES-DIR-PATH [options]"
+	const remoteUsage = dialMode + " ADDRESS [options]"
 
 	var prefix string
 	if optName == "" {
@@ -81,7 +87,7 @@ func (o ParseExploitArgsConfig) usage(optName string) string {
 	} else {
 		usage += "\n"
 
-		if o.OptModes.LocalEnabled {
+		if o.OptModes.ExecEnabled {
 			usage += prefix + localUsage
 		}
 
@@ -93,7 +99,7 @@ func (o ParseExploitArgsConfig) usage(optName string) string {
 			usage += prefix + sshPipesUsage
 		}
 
-		if o.OptModes.RemoteEnabled {
+		if o.OptModes.DialEnabled {
 			if usage != "" {
 				usage += "\n"
 			}
@@ -106,9 +112,9 @@ func (o ParseExploitArgsConfig) usage(optName string) string {
 }
 
 type ExploitModes struct {
-	LocalEnabled    bool
+	ExecEnabled     bool
 	SshPipesEnabled bool
-	RemoteEnabled   bool
+	DialEnabled     bool
 }
 
 func ParseExploitArgs(config ParseExploitArgsConfig) (*process.Process, ExploitArgs) {
@@ -236,9 +242,9 @@ func parseExploitArgs(ctx context.Context, logger *log.Logger, config ParseExplo
 	mode := mainFlagSet.Arg(0)
 
 	switch mode {
-	case "local":
-		if config.OptModes != nil && !config.OptModes.LocalEnabled {
-			return nil, ExploitArgs{}, errors.New("local mode is explicitly disabled")
+	case execMode:
+		if config.OptModes != nil && !config.OptModes.ExecEnabled {
+			return nil, ExploitArgs{}, errors.New(mode + " mode is explicitly disabled")
 		}
 
 		exePath := mainFlagSet.Arg(1)
@@ -258,9 +264,9 @@ func parseExploitArgs(ctx context.Context, logger *log.Logger, config ParseExplo
 		}
 
 		remainingArgs = mainFlagSet.Args()[1:]
-	case "ssh":
+	case sshPipesMode:
 		if config.OptModes != nil && !config.OptModes.SshPipesEnabled {
-			return nil, ExploitArgs{}, errors.New("ssh pipes mode is explicitly disabled")
+			return nil, ExploitArgs{}, errors.New(mode + "mode is explicitly disabled")
 		}
 
 		addr := mainFlagSet.Arg(1)
@@ -292,9 +298,9 @@ func parseExploitArgs(ctx context.Context, logger *log.Logger, config ParseExplo
 		}
 
 		remainingArgs = mainFlagSet.Args()[3:]
-	case "remote":
-		if config.OptModes != nil && !config.OptModes.RemoteEnabled {
-			return nil, ExploitArgs{}, errors.New("remote mode is explicitly disabled")
+	case dialMode:
+		if config.OptModes != nil && !config.OptModes.DialEnabled {
+			return nil, ExploitArgs{}, errors.New(mode + " mode is explicitly disabled")
 		}
 
 		addr := mainFlagSet.Arg(1)
