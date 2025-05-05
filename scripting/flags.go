@@ -89,7 +89,8 @@ type ParseExploitArgsConfig struct {
 	// This field is ignored if set to nil.
 	OptModes *ExploitModes
 
-	// OptLogger specifies the log.Logger to use.
+	// OptLogger specifies the log.Logger to use. If nil,
+	// the log.Logger returned by log.Default is used.
 	//
 	// This field is ignored if set to nil.
 	OptLogger *log.Logger
@@ -197,11 +198,18 @@ type ExploitModes struct {
 	DialEnabled bool
 }
 
-// ParseExploitArgs adds useful arguments to an exploit program.
+// ParseExploitArgs adds several useful arguments to an exploit
+// program. This function parses the exploit program's arguments
+// and instantiates a process.Process which represents the vulnerable
+// process. The Process is configured according to the arguments.
+// Additional useful tooling is returned with the Process object
+// in a ExploitArgs object. This tooling includes a preconfigured
+// StageCtl and a verbose logger.
+//
 // This function works by parsing the exploit program's arguments
 // using several predefined command arguments and options. Additional
 // required information is specified using the ParseExploitArgsConfig
-// type. The previously-named type also allows argument parsing
+// struct. The previously-named type also allows argument parsing
 // behavior to be overriden using optional struct fields.
 //
 // The general argument structure expected by this function is:
@@ -221,28 +229,30 @@ type ExploitModes struct {
 // # Modes
 //
 // Several modes (also known as non-flag arguments or commands) are
-// made available by default. These modes are (required positional
-// arguments are capitalized strings):
+// made available by default. These modes take one or more positional
+// arguments, which are represented as capitalized strings below:
 //
-//   - exec EXE-PATH - Executes the vulnerable program using the fork+exec
-//     style of execution
+//   - exec EXE-PATH - Executes the vulnerable program using the
+//     process.ExecCtx function
 //   - ssh SSH-SERVER-ADDR PIPES-DIR-PATH - Connects to the vulnerable
-//     process over SSH using two named pipes (or FIFOs). The SSH server
-//     is connected to using the "ssh" program found in the PATH
-//     environment variable. The SSH server address is the first
-//     positional argument. The pipes' parent directory is specified
-//     using the second positional  argument. The pipe files must be
-//     named "stdin" and "stdout"
-//   - dial ADDRESS - Connect to the vulnerable process over the network.
-//     The address string must be of the format: HOST:PORT. For example,
-//     "my-ctf.net:80" or "192.168.1.2:80"
+//     process over SSH using two named pipes (or FIFOs) that exist on
+//     the SSH server. The server is connected to using the "ssh"
+//     program found in the PATH environment variable. The server
+//     address is the first positional argument. The pipes' parent
+//     directory is specified using the second positional argument.
+//     The pipe files must be named "stdin" and "stdout"
+//   - dial ADDRESS - Connects to the vulnerable process over the
+//     network using process.DialCtx. The address string must be of
+//     the format: HOST:PORT. For example: "my-ctf.net:80" or
+//     "10.0.0.2:80"
 //
 // # Options
 //
-// Optional arguments may be specified after the mode arguments.
-// These arguments appear after the mode arguments to make it
-// easy to quickly modify them between executions of the exploit
-// program (e.g., by avoiding constant left-arrowing / word jumping).
+// Optional flag-style arguments may be specified after the mode
+// arguments. These arguments appear after the mode arguments to
+// make it easy to quickly modify them between executions of the
+// exploitprogram (e.g., by avoiding constant left-arrowing or
+// word jumping).
 //
 // The following arguments are parsed by default:
 //
