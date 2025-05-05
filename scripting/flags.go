@@ -14,28 +14,97 @@ import (
 	"gitlab.com/stephen-fox/brkit/process"
 )
 
+// Various exploit modes command strings.
 const (
 	execMode     = "exec"
 	sshPipesMode = "ssh"
 	dialMode     = "dial"
 )
 
+// ParseExploitArgsConfig configures the ParseExploitArgs function.
+//
+// All fields starting with "Opt" are optional (i.e., are ignored
+// when set to their default values).
 type ParseExploitArgsConfig struct {
-	ProcInfo             process.Info
-	OptExecArgs          []string
-	OptName              string
-	OptDescr             string
-	OptOsArgs            []string
-	OptMainFlagSet       *flag.FlagSet
-	OptModMainFlagSet    func(*flag.FlagSet)
-	OptOptionsFlagSet    *flag.FlagSet
+	// ProcInfo is the process.Info to configure the process with.
+	ProcInfo process.Info
+
+	// OptExecArgs specifies additional arguments to pass to the
+	// child process when spawning it using exec-based modes.
+	//
+	// This field is ignored if it is empty or a non-exec mode is used.
+	OptExecArgs []string
+
+	// OptName overrides the exploit command name.
+	//
+	// This field is ignored if set to an empty string.
+	OptName string
+
+	// OptDescr overrides the exploit's description, which is
+	// displayed when the "-h" argument is provided.
+	//
+	// This field is ignored if set to an empty string.
+	OptDescr string
+
+	// OptOsArgs overrides the arguments to be parsed. Normally,
+	// os.Args is used. Refer to flag.Parse for more information
+	// on this behavior.
+	//
+	// This field is ignored if the slice is zero length.
+	OptOsArgs []string
+
+	// OptMainFlagSet overrides the default flag.FlagSet. Normally,
+	// flag.CommandLine is used.
+	//
+	// This field is ignored if set to nil.
+	OptMainFlagSet *flag.FlagSet
+
+	// OptModMainFlagSet specifies a function that receives the main
+	// flag.FlagSet prior to parsing arguments.
+	//
+	// This field is ignored if set to nil.
+	OptModMainFlagSet func(*flag.FlagSet)
+
+	// OptOptionsFlagSet overrides the options flag.FlagSet (flags
+	// that appear after the exploit mode arguments).
+	//
+	// This field is ignored if set to nil.
+	OptOptionsFlagSet *flag.FlagSet
+
+	// OptModOptionsFlagSet specifies a function that receives
+	// the options flag.FlagSet (flags that appear after the
+	// exploit mode arguments)) prior to parsing those arguments.
+	//
+	// This field is ignored if set to nil.
 	OptModOptionsFlagSet func(*flag.FlagSet)
-	OptExitFn            func(int)
-	OptModes             *ExploitModes
-	OptLogger            *log.Logger
+
+	// OptExitFn overrides the function that exits the exploit
+	// program (normally os.Exit).
+	//
+	// This field is ignored if set to nil.
+	OptExitFn func(int)
+
+	// OptModes specifies which exploit modes are enabled.
+	//
+	// This field is ignored if set to nil.
+	OptModes *ExploitModes
+
+	// OptLogger specifies the log.Logger to use.
+	//
+	// This field is ignored if set to nil.
+	OptLogger *log.Logger
 }
 
+// writeHelpAndExit generates the "-h" output and writes it to the output
+// io.Writer variable.
 func (o ParseExploitArgsConfig) writeHelpAndExit(name string, output io.Writer) {
+	if output == os.Stderr {
+		stdoutInfo, err := os.Stdout.Stat()
+		if err == nil && stdoutInfo.Mode()&os.ModeNamedPipe != 0 {
+			output = os.Stdout
+		}
+	}
+
 	description := "A brkit-based exploit."
 	if o.OptDescr != "" {
 		description = o.OptDescr
@@ -64,6 +133,8 @@ OPTIONS
 	}
 }
 
+// usage generates the usage strings that appear in the "-h" output
+// and in the missing command error.
 func (o ParseExploitArgsConfig) usage(optName string) string {
 	const helpUsage = "-h"
 	const localUsage = execMode + " EXE-PATH [options]"
@@ -111,16 +182,88 @@ func (o ParseExploitArgsConfig) usage(optName string) string {
 	return usage
 }
 
+// ExploitModes configures which modes are available to the exploit.
+// Enabled modes are reflected in the auto-generated help documentation.
+//
+// Refer to ParseExploitArgs documentation for details.
 type ExploitModes struct {
-	ExecEnabled     bool
+	// ExecEnabled enables exec mode if set to true.
+	ExecEnabled bool
+
+	// SshPipesEnabled enables ssh pipes mode if set to true.
 	SshPipesEnabled bool
-	DialEnabled     bool
+
+	// DialEnabled enables dial mod if set to true.
+	DialEnabled bool
 }
 
+// ParseExploitArgs adds useful arguments to an exploit program.
+// This function works by parsing the exploit program's arguments
+// using several predefined command arguments and options. Additional
+// required information is specified using the ParseExploitArgsConfig
+// type. The previously-named type also allows argument parsing
+// behavior to be overriden using optional struct fields.
+//
+// The general argument structure expected by this function is:
+//
+//	program-name MODE POSITIONAL-ARGS [options]
+//
+// # Help
+//
+// Help documentation is auto-generated as well and can be viewed
+// by executing the program with the "-h" argument. The "-h" can
+// be specified before or after the mode arguments. Documentation
+// is written to standard error by default. If standard output is
+// a pipe, then the documentation is written to standard output
+// instead. Refer to the Go Doc examples for a sample of the
+// help documentation.
+//
+// # Modes
+//
+// Several modes (also known as non-flag arguments or commands) are
+// made available by default. These modes are (required positional
+// arguments are capitalized strings):
+//
+//   - exec EXE-PATH - Executes the vulnerable program using the fork+exec
+//     style of execution
+//   - ssh SSH-SERVER-ADDR PIPES-DIR-PATH - Connects to the vulnerable
+//     process over SSH using two named pipes (or FIFOs). The SSH server
+//     is connected to using the "ssh" program found in the PATH
+//     environment variable. The SSH server address is the first
+//     positional argument. The pipes' parent directory is specified
+//     using the second positional  argument. The pipe files must be
+//     named "stdin" and "stdout"
+//   - dial ADDRESS - Connect to the vulnerable process over the network.
+//     The address string must be of the format: HOST:PORT. For example,
+//     "my-ctf.net:80" or "192.168.1.2:80"
+//
+// # Options
+//
+// Optional arguments may be specified after the mode arguments.
+// These arguments appear after the mode arguments to make it
+// easy to quickly modify them between executions of the exploit
+// program (e.g., by avoiding constant left-arrowing / word jumping).
+//
+// The following arguments are parsed by default:
+//
+//   - -h - Writes the auto-generated help documentation to standard
+//     error and exits
+//   - -v - Enables the verbose logger returned in ExploitArgs
+//   - -V - Enables logging of reads and writes made to and from
+//     the vulnerable processs
+//   - -s - Sets the stage number to pause the exploit's exection
+//     at in the StageCtl returned in ExploitArgs
 func ParseExploitArgs(config ParseExploitArgsConfig) (*process.Process, ExploitArgs) {
 	return ParseExploitArgsCtx(context.Background(), config)
 }
 
+// ParseExploitArgsCtx parses the exploit program's arguments
+// and passes the provided context.Context to the resulting
+// process.Process. The context.Context is used to cancel
+// the process.
+//
+// Refer to ParseExploitArgs for details on which argument
+// strings are expected and their behavior.
 func ParseExploitArgsCtx(ctx context.Context, config ParseExploitArgsConfig) (*process.Process, ExploitArgs) {
 	logger := log.Default()
 	if config.OptLogger != nil {
@@ -138,11 +281,26 @@ func ParseExploitArgsCtx(ctx context.Context, config ParseExploitArgsConfig) (*p
 	return proc, args
 }
 
+// ExploitArgs contains the various values generated by parsing
+// the exploit's arguments.
+//
+// Refer to ParseExploitArgs documentation for more details.
 type ExploitArgs struct {
-	Stages  StageCtl
+	// Stages is an auto-generates StageCtl. It is
+	// automatically configured to stop at the stage
+	// specified by the stage argument.
+	Stages StageCtl
+
+	// Verbose is a log.Logger that defaults to
+	// discarding its output. It will only write
+	// log messages if the verbose argument is
+	// provided. The ParseExploitArgsConfig type
+	// provides a mechanism to configure the
+	// log.Logger on which this one is based.
 	Verbose *log.Logger
 }
 
+// newExploitFlags creates a new exploitFlags for the provided flag.FlagSet.
 func newExploitFlags(flagSet *flag.FlagSet) *exploitFlags {
 	var tempArgs exploitFlags
 
@@ -173,6 +331,9 @@ func newExploitFlags(flagSet *flag.FlagSet) *exploitFlags {
 	return &tempArgs
 }
 
+// exploitFlags contains the intermediate result of parsing the exploit
+// program's arguments. This struct is used to generate the ExploitArgs
+// struct.
 type exploitFlags struct {
 	help              bool
 	stageNumber       int
@@ -193,7 +354,16 @@ func (o exploitFlags) toExploitArgs(logger *log.Logger) ExploitArgs {
 	return args
 }
 
+// parseExploitArgs parses the arguments passed to the exploit program.
 func parseExploitArgs(ctx context.Context, logger *log.Logger, config ParseExploitArgsConfig) (*process.Process, ExploitArgs, error) {
+	if config.ProcInfo.PlatformBits == 0 {
+		return nil, ExploitArgs{}, errors.New("the provided process.ProcInfo's PlatformBits is zero")
+	}
+
+	if config.ProcInfo.PtrSizeBytes == 0 {
+		return nil, ExploitArgs{}, errors.New("the provided process.ProcInfo's PtrSizeBytes is zero")
+	}
+
 	mainFlagSet := flag.CommandLine
 	if config.OptMainFlagSet != nil {
 		mainFlagSet = config.OptMainFlagSet
