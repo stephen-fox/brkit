@@ -73,7 +73,7 @@ type ParseExploitArgsConfig struct {
 
 	// OptModOptionsFlagSet specifies a function that receives
 	// the options flag.FlagSet (flags that appear after the
-	// exploit mode arguments)) prior to parsing those arguments.
+	// exploit mode arguments) prior to parsing those arguments.
 	//
 	// This field is ignored if set to nil.
 	OptModOptionsFlagSet func(*flag.FlagSet)
@@ -210,7 +210,7 @@ type ExploitModes struct {
 // using several predefined command arguments and options. Additional
 // required information is specified using the ParseExploitArgsConfig
 // struct. The previously-named type also allows argument parsing
-// behavior to be overriden using optional struct fields.
+// behavior to be overridden using optional struct fields.
 //
 // The general argument structure expected by this function is:
 //
@@ -251,18 +251,16 @@ type ExploitModes struct {
 // Optional flag-style arguments may be specified after the mode
 // arguments. These arguments appear after the mode arguments to
 // make it easy to quickly modify them between executions of the
-// exploitprogram (e.g., by avoiding constant left-arrowing or
+// exploit program (e.g., by avoiding constant left-arrowing or
 // word jumping).
 //
 // The following arguments are parsed by default:
 //
-//   - -h - Writes the auto-generated help documentation to standard
-//     error and exits
-//   - -v - Enables the verbose logger returned in ExploitArgs
-//   - -V - Enables logging of reads and writes made to and from
-//     the vulnerable processs
-//   - -s - Sets the stage number to pause the exploit's exection
-//     at in the StageCtl returned in ExploitArgs
+//   - -V:        Enables logging of reads and writes made to/from
+//     the vulnerable process
+//   - -h:        Prints help documentation and exits
+//   - -s int:    Sets the stage number to pause execution at
+//   - -v:        Enables verbose logging
 func ParseExploitArgs(config ParseExploitArgsConfig) (*process.Process, ExploitArgs) {
 	return ParseExploitArgsCtx(context.Background(), config)
 }
