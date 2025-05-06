@@ -1,6 +1,7 @@
 package bstruct
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -180,44 +181,35 @@ type parseFieldArgs struct {
 
 func parseField(args parseFieldArgs) error {
 	if !args.field.IsExported() {
-		v, hasIt := args.field.Tag.Lookup("brkit")
-		if hasIt && v == "-" {
-			return nil
-		}
-
-		return errors.New("field is not exported - it can be explicitly ignored using the tag `brkit:\"-\"`")
+		// TODO: Should we error in this case? Maybe we can
+		// make the behavior configurable using a global
+		// variable?
+		return nil
 	}
 
-	var b []byte
+	buf := bytes.NewBuffer(nil)
+	var err error
 
 	switch t := args.fieldValue.Interface().(type) {
 	case Byter:
-		b = t.ToBytes(args.bo)
-	case uint8:
-		b = []byte{t}
-	case uint16:
-		b = make([]byte, 2)
-		args.bo.PutUint16(b, t)
-	case uint32:
-		b = make([]byte, 4)
-		args.bo.PutUint32(b, t)
-	case uint64:
-		b = make([]byte, 8)
-		args.bo.PutUint64(b, t)
+		_, err = buf.Write(t.ToBytes(args.bo))
 	default:
-		return fmt.Errorf("unsupported data type %T for field %q",
-			t, args.field.Name)
+		err = binary.Write(buf, args.bo, t)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	if args.fieldFn == nil {
 		return errors.New("field function is nil")
 	}
 
-	err := args.fieldFn(FieldInfo{
+	err = args.fieldFn(FieldInfo{
 		Index: args.index,
 		Name:  args.field.Name,
 		Type:  args.field.Type.String(),
-		Value: b,
+		Value: buf.Bytes(),
 	})
 	if err != nil {
 		return err
