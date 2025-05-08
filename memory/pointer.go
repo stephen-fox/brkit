@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
@@ -63,11 +64,39 @@ func PointerMakerFor(endianness binary.ByteOrder, bits int, pointerSizeBytes int
 }
 
 // PointerMaker helps with converting various representations of pointers
-// to Pointer objects. Refer to Pointer's documentation for more information.
+// to Pointer objects. By default, this type's methods will either error
+// or exit the process if a null pointer is parsed (depening on whether
+// the relevant method returns an error).
+//
+// A null pointer can be created using the NullPtr method. Null checking
+// can be disabled using the WithNullAllowed method.
+//
+// Refer to Pointer's documentation for more information.
 type PointerMaker struct {
-	target  binary.ByteOrder
-	bits    int
-	ptrSize int
+	target    binary.ByteOrder
+	bits      int
+	ptrSize   int
+	allowNull bool
+}
+
+// WithNullAllowed executes fn, passing a copy of this PointerMaker
+// object to it with null checking disabled.
+func (o PointerMaker) WithNullAllowed(fn func(p PointerMaker) (Pointer, error)) (Pointer, error) {
+	o.allowNull = true
+
+	p, err := fn(o)
+
+	return p, err
+}
+
+// NullPtr returns a Pointer that points to null (0x00). A Pointer created
+// using this method explicitly bypasses the null check.
+func (o PointerMaker) NullPtr() Pointer {
+	o.allowNull = true
+
+	ptr := o.FromUint(0x00)
+
+	return ptr
 }
 
 // ParseUintPrefixOrExit calls PointerMaker.ParseUintPrefix,
@@ -130,11 +159,19 @@ func (o PointerMaker) FromUint(address uint) Pointer {
 	default:
 		panic(fmt.Sprintf("unsupported bits: %d", o.bits))
 	}
-	return Pointer{
+
+	p := Pointer{
+		allowNull: o.allowNull,
 		byteOrder: o.target,
 		address:   address,
 		bytes:     out,
 	}
+
+	if !o.allowNull {
+		p.exitIfNull()
+	}
+
+	return p
 }
 
 // FromHexStringOrExit calls PointerMaker.FromHexString, subsequently calling
@@ -244,35 +281,37 @@ func (o PointerMaker) FromRawBytes(raw []byte, sourceEndianness binary.ByteOrder
 		return Pointer{}, fmt.Errorf("unsupported pointer size: %d", o.ptrSize)
 	}
 
-	return Pointer{
+	p := Pointer{
+		allowNull: o.allowNull,
 		byteOrder: o.target,
 		address:   address,
 		bytes:     canonicalBytes,
-	}, nil
+	}
+
+	if !o.allowNull {
+		err := p.errIfNull()
+		if err != nil {
+			return Pointer{}, err
+		}
+	}
+
+	return p, nil
 }
 
 // Pointer provides a canonical representation of a memory address pointer.
 // A pointer is a variable that points to a memory address.
 //
-// Pointers are created with a PointerMaker.
+// Pointers are created using a PointerMaker. A Pointer created without
+// a PointerMaker is invalid. Calling such a Pointer's methods will
+// result in the current process being exited. This behavior is meant
+// to quickly identify an unset / zero-value Pointer, which would likely
+// cause subtle bugs in an exploit. Refer to the type's examples for
+// a real world instance of such a bug.
 type Pointer struct {
+	allowNull bool
 	byteOrder binary.ByteOrder
 	address   uint
 	bytes     []byte
-}
-
-// NonNullOrExit calls DefaultExitFn if the pointer is null.
-//
-// An optional error message prefix can be provided using
-// the optPrefix argument.
-func (o Pointer) NonNullOrExit(optPrefix ...string) {
-	if o.IsNull() {
-		if len(optPrefix) > 0 {
-			DefaultExitFn(fmt.Errorf("%s: pointer is null", optPrefix[0]))
-		} else {
-			DefaultExitFn(errors.New("pointer is null"))
-		}
-	}
 }
 
 // IsNull returns true if the pointer is null (i.e., points to zero).
@@ -283,6 +322,10 @@ func (o Pointer) IsNull() bool {
 // Bytes returns the pointer as a []byte in the endianness of the target
 // platform with the correct padding.
 func (o Pointer) Bytes() []byte {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	return o.bytes
 }
 
@@ -290,21 +333,37 @@ func (o Pointer) Bytes() []byte {
 //
 // This is useful for performing math on the pointed-to address.
 func (o Pointer) Uint() uint {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	return o.address
 }
 
 // Uint32 returns the pointer as an unsigned 32-bit integer.
 func (o Pointer) Uint32() uint32 {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	return uint32(o.address)
 }
 
 // Uint64 returns the pointer as an unsigned 64-bit integer.
 func (o Pointer) Uint64() uint64 {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	return uint64(o.address)
 }
 
 // Offset returns a new Pointer after applying the given amount.
 func (o Pointer) Offset(amount int64) Pointer {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	adjusted := o.address
 	switch {
 	case amount == 0:
@@ -331,11 +390,18 @@ func (o Pointer) Offset(amount int64) Pointer {
 		panic(fmt.Sprintf("unsupported pointer length: %d", numBytes))
 	}
 
-	return Pointer{
+	p := Pointer{
+		allowNull: o.allowNull,
 		byteOrder: o.byteOrder,
 		address:   adjusted,
 		bytes:     b,
 	}
+
+	if !p.allowNull {
+		p.exitIfNull()
+	}
+
+	return p
 }
 
 // HexString returns a hex-encoded string representing the pointer,
@@ -344,6 +410,10 @@ func (o Pointer) Offset(amount int64) Pointer {
 // This method renders the pointer as a human would expect to
 // see it; it does not respect the platform's byte ordering.
 func (o Pointer) HexString() string {
+	if !o.allowNull {
+		o.exitIfNull()
+	}
+
 	initial := fmt.Sprintf("%x", o.address)
 
 	needsToBeLen := len(o.bytes) * 2
@@ -354,4 +424,24 @@ func (o Pointer) HexString() string {
 	}
 
 	return "0x" + initial
+}
+
+// exitIfNull exits the process if the Pointer is null.
+func (o Pointer) exitIfNull() {
+	err := o.errIfNull()
+	if err != nil {
+		DefaultExitFn(err)
+	}
+}
+
+// errIfNull returns a non-nil error if the Pointer is null.
+func (o Pointer) errIfNull() error {
+	if o.IsNull() {
+		return (fmt.Errorf("pointer value is null "+
+			"which is disabled by policy "+
+			"(refer to the PointerMaker type's documentation for details)\n%s",
+			debug.Stack()))
+	}
+
+	return nil
 }
