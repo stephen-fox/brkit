@@ -438,8 +438,8 @@ func (o Pointer) exitIfNull() {
 func (o Pointer) errIfNull() error {
 	if o.IsNull() {
 		return (fmt.Errorf("pointer value is null "+
-			"which is disabled by policy "+
-			"(refer to the PointerMaker type's documentation for details)\n%s",
+			"which is disallowed by default "+
+			"(refer to PointerMaker and Pointer documentation for details)\n%s",
 			debug.Stack()))
 	}
 
