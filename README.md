@@ -46,15 +46,15 @@ controlled by the arguments:
 package main
 
 import (
-        "gitlab.com/stephen-fox/brkit/process"
-        "gitlab.com/stephen-fox/brkit/scripting"
+    "gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/scripting"
 )
 
 func main() {
-        proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
-                ProcInfo: process.X86_64Info(),
-        })
-        defer proc.Close()
+    proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
+        ProcInfo: process.X86_64Info(),
+    })
+    defer proc.Close()
 }
 ```
 
@@ -90,19 +90,19 @@ Here is an example of creating stages:
 package main
 
 import (
-        "gitlab.com/stephen-fox/brkit/process"
-        "gitlab.com/stephen-fox/brkit/scripting"
+    "gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/scripting"
 )
 
 func main() {
-        proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
-                ProcInfo: process.X86_64Info(),
-        })
-        defer proc.Close()
+    proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
+        ProcInfo: process.X86_64Info(),
+    })
+    defer proc.Close()
 
-        args.Stages.Next("Example stage")
+    args.Stages.Next("Example stage")
 
-        args.Stages.Next("Another example stage")
+    args.Stages.Next("Another example stage")
 }
 ```
 
@@ -125,14 +125,14 @@ To pause at the second stage in the previous example:
 // ...
 
 func main() {
-        proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
-                ProcInfo: process.X86_64Info(),
-        })
-        defer proc.Close()
+    proc, args := scripting.ParseExploitArgs(scripting.ParseExploitArgsConfig{
+        ProcInfo: process.X86_64Info(),
+    })
+    defer proc.Close()
 
-        args.Stages.Next.Goto = 2
+    args.Stages.Next.Goto = 2
 
-        // ...
+    // ...
 }
 ```
 
@@ -159,25 +159,25 @@ like the width of a pointer:
 package main
 
 import (
-        "os"
-        "os/exec"
+    "os"
+    "os/exec"
 
-        "gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/process"
 )
 
 func main() {
-        // Start a process using exec (in this case, cat):
-        execProc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
+    // Start a process using exec (in this case, cat):
+    execProc, err := process.Exec(exec.Command("cat"), process.X86_64Info())
 
-        // Connect to a process over the network:
-        dialProc, err := process.Dial("tcp", "192.168.1.2:80", process.X86_64Info())
+    // Connect to a process over the network:
+    dialProc, err := process.Dial("tcp", "192.168.1.2:80", process.X86_64Info())
 
-        // Construct a process from an io.Reader and io.Writer:
-        r, w, _ := os.Pipe()
-        ioProc := process.FromIO(r, w, process.X86_64Info())
+    // Construct a process from an io.Reader and io.Writer:
+    r, w, _ := os.Pipe()
+    ioProc := process.FromIO(r, w, process.X86_64Info())
 
-        // A context.Context can also be supplied using process
-        // library functions ending with the "Ctx" suffix.
+    // A context.Context can also be supplied using process
+    // library functions ending with the "Ctx" suffix.
 }
 ```
 
@@ -190,36 +190,36 @@ and receive data:
 package main
 
 import (
-        "log"
-        "os/exec"
+    "log"
+    "os/exec"
 
-        "gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/process"
 )
 
 func main() {
-        // Start a process using exec (in this case, cat):
-        cat, _ := process.Exec(exec.Command("cat"), process.X86_64Info())
+    // Start a process using exec (in this case, cat):
+    cat, _ := process.Exec(exec.Command("cat"), process.X86_64Info())
 
-        // Optionally log all reads and writes to the process
-        // in hexdump format:
-        cat.SetLoggerR(log.Default())
-        cat.SetLoggerW(log.Default())
+    // Optionally log all reads and writes to the process
+    // in hexdump format:
+    cat.SetLoggerR(log.Default())
+    cat.SetLoggerW(log.Default())
 
-        // This writes "hello world\n":
-        cat.WriteLine([]byte("hello world"))
+    // This writes "hello world\n":
+    cat.WriteLine([]byte("hello world"))
 
-        // Block until a "\n" is read from the process.
-        // (line will contain "hello world\n")
-        line, _ := cat.ReadLine()
+    // Block until a "\n" is read from the process.
+    // (line will contain "hello world\n")
+    line, _ := cat.ReadLine()
 
-        cat.WriteLine([]byte("some more data"))
+    cat.WriteLine([]byte("some more data"))
 
-        // Block until "data\n" is read:
-        cat.ReadUntil([]byte("data\n"))
+    // Block until "data\n" is read:
+    cat.ReadUntil([]byte("data\n"))
 
-        // Hook up the Go program's stdin and stdout to the process
-        // and block until a read or write fails:
-        cat.Interactive()
+    // Hook up the Go program's stdin and stdout to the process
+    // and block until a read or write fails:
+    cat.Interactive()
 }
 ```
 
@@ -313,40 +313,40 @@ objects, and various Go primitive types:
 package main
 
 import (
-	"encoding/binary"
-	"os/exec"
+    "encoding/binary"
+    "os/exec"
 
-	"gitlab.com/stephen-fox/brkit/iokit"
-	"gitlab.com/stephen-fox/brkit/memory"
-	"gitlab.com/stephen-fox/brkit/pattern"
-	"gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/iokit"
+    "gitlab.com/stephen-fox/brkit/memory"
+    "gitlab.com/stephen-fox/brkit/pattern"
+    "gitlab.com/stephen-fox/brkit/process"
 )
 
 func main() {
-	vulnProc, _ := process.Exec(exec.Command("vuln"), process.X86_64Info())
-	defer vulnProc.Close()
+    vulnProc, _ := process.Exec(exec.Command("vuln"), process.X86_64Info())
+    defer vulnProc.Close()
 
-	pm := memory.PointerMakerForX86_64()
+    pm := memory.PointerMakerForX86_64()
 
-	dbPattern := pattern.DeBruijn{}
+    dbPattern := pattern.DeBruijn{}
 
-	// Here is what the payload variable becomes:
-	//
-	// 41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
-	// 7a 65 72 6f 63 6f 6f 6c  61 61 61 61 62 61 61 61  |zerocoolaaaabaaa|
-	// 63 61 61 61 64 61 61 61  01 01 02 03 0d d0 de c0  |caaadaaa........|
-	// 00 00 00 00 0d f0 ad fb  ee db ea 0d 0a           |.............|
-	payload := iokit.NewPayloadBuilder().
-		RepeatString("A", 8*2).
-		String("zerocool").
-		Pattern(&dbPattern, 16).
-		Bytes([]byte{0x01, 0x01, 0x02, 0x03}).
-		Uint64(0xc0ded00d, binary.LittleEndian).
-		Pointer(pm.FromUint(0xdeadbeefbadf00d)).
-		Byte('\n').
-		Build()
+    // Here is what the payload variable becomes:
+    //
+    // 41 41 41 41 41 41 41 41  41 41 41 41 41 41 41 41  |AAAAAAAAAAAAAAAA|
+    // 7a 65 72 6f 63 6f 6f 6c  61 61 61 61 62 61 61 61  |zerocoolaaaabaaa|
+    // 63 61 61 61 64 61 61 61  01 01 02 03 0d d0 de c0  |caaadaaa........|
+    // 00 00 00 00 0d f0 ad fb  ee db ea 0d 0a           |.............|
+    payload := iokit.NewPayloadBuilder().
+        RepeatString("A", 8*2).
+        String("zerocool").
+        Pattern(&dbPattern, 16).
+        Bytes([]byte{0x01, 0x01, 0x02, 0x03}).
+        Uint64(0xc0ded00d, binary.LittleEndian).
+        Pointer(pm.FromUint(0xdeadbeefbadf00d)).
+        Byte('\n').
+        Build()
 
-	vulnProc.Write(payload)
+    vulnProc.Write(payload)
 }
 ```
 
