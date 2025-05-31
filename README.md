@@ -27,8 +27,9 @@ argument parsing, debugging, and connecting to a vulnerable process. Use of
 this library is completely optional and the process connection code can be
 utilized independently of this library.
 
-In particular, the `ParseExploitArgs` function adds several useful commands
-and optional arguments to the exploit program including:
+In particular, the `ParseExploitArgs` function automatically adds several
+useful commands and optional arguments to the exploit program. The following
+commands can be specified by running `<exploit-name> <command>`:
 
 - `exec` - Execute a process using Go's `os/exec` library
 - `ssh` - Connect to a remote process using SSH and named pipes. This is
@@ -39,7 +40,7 @@ and optional arguments to the exploit program including:
 ParseExploitArgs parses the above commands for you and returns
 a `process.Process` object representing the vulnerable program
 along with a struct containing optional functionality that is
-controlled by the optional arguments:
+controlled by the arguments:
 
 ```go
 package main
@@ -105,7 +106,7 @@ func main() {
 }
 ```
 
-Here is what happens when the above program:
+Here is what happens when we execute the above program:
 
 ```console
 $ go run tmpexample/main.go exec cat
