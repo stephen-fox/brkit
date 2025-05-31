@@ -228,71 +228,82 @@ func main() {
 The `memory` library provides several abstractions for working with
 a process's memory. The `Pointer` type stores pointer variables in
 the endianness and bit width of the target platform. Pointer objects
-are created using the `PointerMaker` type. Both PointerMaker and
-Pointer implement checks to catch null pointers. These checks aim
-to mitigate subtle mistakes or surprises in exploit development,
-such as reading a null pointer from an external process or leaving
-a Pointer variable unset in the exploit program itself:
+are created using the `PointerMaker` type:
 
 ```go
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"os/exec"
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "os/exec"
 
-	"gitlab.com/stephen-fox/brkit/memory"
-	"gitlab.com/stephen-fox/brkit/process"
+    "gitlab.com/stephen-fox/brkit/memory"
+    "gitlab.com/stephen-fox/brkit/process"
 )
 
 func main() {
-	vulnProc, _ := process.Exec(exec.Command("vuln"), process.X86_64Info())
-        defer vulnProc.Close()
+    vulnProc, _ := process.Exec(exec.Command("vuln"), process.X86_64Info())
+    defer vulnProc.Close()
 
-	// Here is how a PointerMaker for a x86 64-bit CPU
-	// can be instantiated:
-	pointerMaker := memory.PointerMakerForX86_64()
+    // Here is how a PointerMaker for a x86 64-bit CPU
+    // can be instantiated:
+    pointerMaker := memory.PointerMakerForX86_64()
 
-	// To create a pointer from an unsigned integer:
-	ptr := pointerMaker.FromUint(0xd00d8badf00d)
+    // To create a pointer from an unsigned integer:
+    ptr := pointerMaker.FromUint(0xd00d8badf00d)
 
-	// The pointer is written in the endianness of the target
-	// platform. The payload below this comment becomes:
-	//
-	// 25 70 25 70 25 70 25 70  0d f0 ad 8b 0d d0 00 00  |%p%p%p%p........|
-	payload := bytes.Repeat([]byte{'%', 'p'}, 4)
-	payload = append(payload, ptr.Bytes()...)
+    // The pointer is written in the endianness of the target
+    // platform. The payload below this comment becomes:
+    //
+    // 25 70 25 70 25 70 25 70  0d f0 ad 8b 0d d0 00 00  |%p%p%p%p........|
+    payload := bytes.Repeat([]byte{'%', 'p'}, 4)
+    payload = append(payload, ptr.Bytes()...)
 
-	vulnProc.WriteLine(payload)
+    vulnProc.WriteLine(payload)
+}
+```
 
-	exampleFmtPtrLeak, _ := vulnProc.ReadLine()
-	exampleFmtPtrLeak = bytes.TrimSpace(exampleFmtPtrLeak)
+Both PointerMaker and Pointer implement checks to catch null pointers.
+These checks aim to mitigate subtle mistakes or surprises in exploit
+development, such as reading a null pointer from an external process
+or leaving a Pointer variable unset in the exploit program itself.
 
-	// By default, the PointerMaker will not allow null pointers.
-	// If you know that the vulnerable program may produce null
-	// pointers and you would like to allow them, then use the
-	// WithNullAllowed method:
-	leakedPtr, _ := pointerMaker.WithNullAllowed(
-		func(p memory.PointerMaker) (memory.Pointer, error) {
-			return p.FromHexBytes(exampleFmtPtrLeak, binary.BigEndian)
-		},
-	)
+Continuing from the previous example:
 
-	fmt.Println("leaked:", leakedPtr.HexString())
+```go
+// ...
 
-	// The badPtr variable below is inherently invalid because
-	// its default value is null, which is not allowed by default.
-	//
-	// Calling badPtr.Bytes() below will cause this exploit program
-	// to exit because Bytes checks if the Pointer value is null.
-	var badPtr memory.Pointer
+func main() {
+    // ...
 
-	payload = bytes.Repeat([]byte{0x41}, 8)
-	payload = append(payload, badPtr.Bytes()...)
+    exampleFmtPtrLeak, _ := vulnProc.ReadLine()
+    exampleFmtPtrLeak = bytes.TrimSpace(exampleFmtPtrLeak)
 
-	vulnProc.WriteLine(payload)
+    // By default, the PointerMaker will not allow null pointers.
+    // If you know that the vulnerable program may produce null
+    // pointers and you would like to allow them, then use the
+    // WithNullAllowed method:
+    leakedPtr, _ := pointerMaker.WithNullAllowed(
+        func(p memory.PointerMaker) (memory.Pointer, error) {
+            return p.FromHexBytes(exampleFmtPtrLeak, binary.BigEndian)
+        },
+    )
+
+    fmt.Println("leaked:", leakedPtr.HexString())
+
+    // The badPtr variable below is inherently invalid because
+    // its default value is null, which is not allowed by default.
+    //
+    // Calling badPtr.Bytes() below will cause this exploit program
+    // to exit because Bytes checks if the Pointer value is null.
+    var badPtr memory.Pointer
+
+    payload = bytes.Repeat([]byte{0x41}, 8)
+    payload = append(payload, badPtr.Bytes()...)
+
+    vulnProc.WriteLine(payload)
 }
 ```
 
