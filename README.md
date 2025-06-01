@@ -235,8 +235,6 @@ package main
 
 import (
     "bytes"
-    "encoding/binary"
-    "fmt"
     "os/exec"
 
     "gitlab.com/stephen-fox/brkit/memory"
@@ -301,7 +299,7 @@ func main() {
     var badPtr memory.Pointer
 
     payload = bytes.Repeat([]byte{0x41}, 8)
-    payload = append(payload, badPtr.Bytes()...)
+    payload = append(payload, badPtr.Bytes()...) // <-- Crashes here.
 
     vulnProc.WriteLine(payload)
 }
@@ -317,7 +315,7 @@ The type's `Build` method transforms it into a sequence of bytes which
 can be passed to a `process.Process` for writing.
 
 The PayloadBuilder's many methods allow it to interoperate with pattern
-string generators (such as brkit's `pattern` library), `memory.Pointer`
+string generators such as brkit's `pattern` library, `memory.Pointer`
 objects, and various Go primitive types:
 
 ```go
