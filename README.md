@@ -17,8 +17,16 @@ It eventually expanded into a library that mimics the functionality of
 
 brkit is broken into several sub-packages, each representing a distinct set
 of functionality. Users can use as much or as little of these libraries
-as they like. The following sections outline how these libraries can
-be composed together to build an exploit program.
+as they like.
+
+#### Examples
+
+If you would like to jump straight into a realistic example, please check
+out [Seung's solution][lactf-library] to a heap-based CTF challenge.
+The sections below go into more detail about the brkit functionality
+used in that example.
+
+[lactf-library]: examples/lactf-2025-library/main.go
 
 #### Scripting functionality
 
